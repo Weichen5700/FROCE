@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] · ROCE 觀察站</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+<header class="topbar">
+    <a class="brand" asp-page="/Index">
+        <span class="brand-mark">R</span>
+        <span><strong>ROCE 觀察站</strong><small>台股資本效率筆記</small></span>
+    </a>
+    <nav aria-label="主要導覽">
+        <a asp-page="/Index">觀察清單</a>
+        <a asp-page="/Stocks/Search">查詢股票</a>
+        <a asp-page="/Screen">高品質篩選</a>
+        <a asp-page="/Settings">評分設定</a>
+        <a asp-page="/Data">資料管理</a>
+    </nav>
+</header>
+<main class="shell">
+    @if (TempData["Message"] is string message)
+    {
+        <div class="notice">@message</div>
+    }
+    @if (TempData["Error"] is string error)
+    {
+        <div class="notice notice-error">@error</div>
+    }
+    @RenderBody()
+</main>
+<footer>
+    <span>資料來自證交所、櫃買中心與公開資訊觀測站</span>
+    <span>僅供研究，不構成投資建議</span>
+</footer>
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+

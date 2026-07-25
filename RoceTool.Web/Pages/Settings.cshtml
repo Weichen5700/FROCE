@@ -1,0 +1,35 @@
+@page
+@model SettingsModel
+@{
+    ViewData["Title"] = "評分設定";
+}
+<section class="page-heading">
+    <span class="eyebrow">YOUR SCORECARD</span>
+    <h1>讓分數符合你的思考方式</h1>
+    <p>每個指標以五個門檻做分段線性換算。總分可以改，但每一分都保留計算路徑。</p>
+</section>
+<div class="callout"><strong>權重規則</strong><span>啟用指標的權重合計必須等於 100%。缺資料時依可用權重重算，並顯示覆蓋率。</span></div>
+<form method="post" class="panel settings-panel">
+    <div class="settings-head"><span>啟用</span><span>指標</span><span>權重</span><span>五個門檻（%）</span></div>
+    @for (var i = 0; i < Model.Inputs.Count; i++)
+    {
+        <div class="settings-row">
+            <input type="hidden" asp-for="Inputs[i].MetricKey" />
+            <label class="switch">
+                <input asp-for="Inputs[i].IsEnabled" />
+                <i></i>
+            </label>
+            <div><strong>@ScoreEngine.Label(Model.Inputs[i].MetricKey)</strong><small>@(Model.Inputs[i].MetricKey == MetricKey.DebtRatio ? "越低越好" : "越高越好")</small></div>
+            <label><input class="number-input" asp-for="Inputs[i].Weight" min="0" max="100" step="1" /><span>%</span></label>
+            <input asp-for="Inputs[i].Thresholds" placeholder="0, 5, 10, 15, 20" />
+        </div>
+    }
+    <div class="form-actions">
+        <button class="button button-primary" asp-page-handler="Save" type="submit">儲存評分模板</button>
+        <button class="button" asp-page-handler="Reset" type="submit" data-confirm="確定恢復所有預設權重與門檻？">恢復預設值</button>
+    </div>
+</form>
+<section class="panel">
+    <h2>預設分數意義</h2>
+    <p class="hint">一般指標的五個門檻依序對應 0、25、50、75、100 分；負債比方向相反。門檻之外會限制在 0～100 分，中間採線性插值。</p>
+</section>

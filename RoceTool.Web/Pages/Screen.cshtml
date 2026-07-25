@@ -1,0 +1,152 @@
+@page
+@model ScreenModel
+@{
+    ViewData["Title"] = "高品質篩選";
+    var analyzedRate = Model.Result.EligibleStocks == 0 ? 0m :
+        (decimal)Model.Result.AnalyzedStocks / Model.Result.EligibleStocks * 100m;
+}
+<section class="page-heading">
+    <span class="eyebrow">QUALITY SCREEN</span>
+    <h1>反向找出資本效率出色的公司</h1>
+    <p>從本機已有完整年度財報的公司中，找出同時跨過 ROCE 與品質分數門檻的股票。</p>
+</section>
+
+<form method="get" class="panel filter-panel">
+    <div class="filter-grid">
+        <label><span>最低 ROCE</span><div><input asp-for="MinRoce" type="number" step="0.1" /><b>%</b></div></label>
+        <label><span>最低品質分數</span><div><input asp-for="MinScore" type="number" min="0" max="100" step="1" /><b>分</b></div></label>
+        <label><span>最低資料覆蓋</span><div><input asp-for="MinCoverage" type="number" min="0" max="100" step="1" /><b>%</b></div></label>
+        <label><span>產業</span>
+            <select asp-for="Industry">
+                <option value="">全部產業</option>
+                @foreach (var industry in Model.Result.AvailableIndustries) { <option value="@industry">@industry</option> }
+            </select>
+        </label>        <label><span>投入資本規模</span>
+            <select asp-for="SizeBand">
+                <option value="">全部規模</option>
+                <option value="Small">產業內小型</option>
+                <option value="Medium">產業內中型</option>
+                <option value="Large">產業內大型</option>
+            </select>
+        </label>        <label><span>完整年度</span>
+            <select asp-for="Year">
+                <option value="">每家公司最新年度</option>
+                @foreach (var year in Model.Result.AvailableYears) { <option value="@year">@year</option> }
+            </select>
+        </label>
+        <label><span>排序</span>
+            <select asp-for="Sort">
+                <option value="score">品質分數</option>
+                <option value="roce">ROCE</option>
+                <option value="eps">EPS</option>
+                <option value="pe">本益比</option>
+                <option value="roe">ROE</option>
+                <option value="stock">股票代號</option>
+            </select>
+        </label>
+        <button class="button button-primary" type="submit">套用條件</button>
+    </div>
+</form>
+<p class="hint size-note">規模使用最新年度「資產總額－流動負債」，在同產業已分析公司中三等分；全市場掃描越完整，分組與排名越穩定。</p>
+
+<section class="panel scan-panel">
+    <div class="scan-copy">
+        <div class="panel-heading">
+            <div><span class="eyebrow">FULL MARKET SCAN</span><h2>全市場完整年度掃描</h2></div>
+            <span class="scan-status status-@Model.Scan.Status.ToString().ToLowerInvariant()">@ScreenModel.StatusLabel(Model.Scan.Status)</span>
+        </div>
+        <p>逐檔取得 MOPS 最新完整年度，一次只送出一筆請求且每筆間隔一秒。第一次約需數十分鐘，可暫停、關閉並續跑。</p>
+    </div>
+    <div class="scan-progress">
+        <div class="progress-head">
+            <strong>@Model.Scan.Completed.ToString("N0") / @Model.Scan.Total.ToString("N0")</strong>
+            <span>@Model.Scan.Percent.ToString("N1")%</span>
+        </div>
+        <div class="scan-track"><i style="width:@Model.Scan.Percent.ToString("0.##")%"></i></div>
+        <div class="scan-meta">
+            <span>成功 @Model.Scan.Success.ToString("N0")</span>
+            <span>未取得 @Model.Scan.Failed.ToString("N0")</span>
+            @if (!string.IsNullOrWhiteSpace(Model.Scan.CurrentStockNo)) { <span>正在處理 @Model.Scan.CurrentStockNo</span> }
+        </div>
+    </div>
+    <div class="scan-actions">
+        @if (Model.Scan.Status == MarketScanStatus.Running)
+        {
+            <form method="post" asp-page-handler="PauseScan">
+                <input type="hidden" asp-for="MinRoce" /><input type="hidden" asp-for="MinScore" />
+                <input type="hidden" asp-for="MinCoverage" /><input type="hidden" asp-for="Year" /><input type="hidden" asp-for="Industry" /><input type="hidden" asp-for="SizeBand" /><input type="hidden" asp-for="Sort" />
+                <button class="button" type="submit">暫停掃描</button>
+            </form>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="StartScan" class="scan-start">
+                <input type="hidden" asp-for="MinRoce" /><input type="hidden" asp-for="MinScore" />
+                <input type="hidden" asp-for="MinCoverage" /><input type="hidden" asp-for="Year" /><input type="hidden" asp-for="Industry" /><input type="hidden" asp-for="SizeBand" /><input type="hidden" asp-for="Sort" />
+                <label><span>掃描年度</span><input asp-for="ScanYear" type="number" min="1990" max="2200" /></label>
+                <button class="button button-primary" type="submit">@(Model.Scan.Status == MarketScanStatus.Paused ? "繼續掃描" : "開始／檢查掃描")</button>
+            </form>
+        }
+    </div>
+</section>
+
+<section class="summary-strip screen-summary">
+    <div><span>符合條件</span><strong>@Model.Items.Count</strong><small>家公司</small></div>
+    <div><span>已有完整年度資料</span><strong>@Model.Result.AnalyzedStocks</strong><small>／ @Model.Result.EligibleStocks 家一般業公司</small></div>
+    <div><span>市場分析覆蓋</span><strong>@analyzedRate.ToString("N1")%</strong><small>清單完整度，不是評分覆蓋率</small></div>
+</section>
+
+@if (Model.Items.Count == 0)
+{
+    <section class="empty-state compact">
+        <div class="empty-icon">◇</div>
+        <h2>目前沒有符合條件的公司</h2>
+        @if (Model.Result.AnalyzedStocks == 0)
+        {
+            <p>尚未取得完整年度財報。可啟動全市場掃描，或用 CSV 批次匯入。</p>
+            <div class="form-actions centered"><a class="button" asp-page="/Data">匯入 CSV</a></div>
+        }
+        else { <p>可以降低門檻、切換年度，或讓全市場掃描繼續累積資料。</p> }
+    </section>
+}
+else
+{
+    <div class="table-wrap screen-table">
+        <table>
+            <thead><tr><th>排名</th><th>股票</th><th>市場</th><th>產業</th><th>規模</th><th>年度</th><th>ROCE</th><th>EPS</th><th>收盤價</th><th>本益比</th><th>ROE</th><th>同業 ROCE</th><th>同規模 ROCE</th><th>品質分數</th><th>資料覆蓋</th><th>來源</th><th></th></tr></thead>
+            <tbody>
+            @for (var i = 0; i < Model.Items.Count; i++)
+            {
+                var item = Model.Items[i];
+                var roe = FinancialCalculator.ValueFor(MetricKey.Roe, item.Statement);
+                <tr>
+                    <td><span class="rank">@(i + 1)</span></td>
+                    <td><strong>@item.Stock.StockNo</strong> @item.Stock.Name</td>
+                    <td>@(item.Stock.Market == MarketKind.Listed ? "上市" : "上櫃")</td>
+                    <td>@(string.IsNullOrWhiteSpace(item.Stock.IndustryName) ? "未分類" : item.Stock.IndustryName)</td>
+                    <td><strong>@CompanySizeBandLabels.Label(item.SizeBand)</strong><small class="peer-median">投入資本 @(item.CapitalEmployed / 100000m).ToString("N1") 億</small></td>
+                    <td>@item.Statement.FiscalYear</td>
+                    <td><strong class="positive">@item.Roce.ToString("N2")%</strong></td>
+                    <td>@(item.Statement.Eps?.ToString("N2") ?? "—")</td>
+                    <td>@(item.Stock.ClosePrice?.ToString("N2") ?? "—")</td>
+                    <td>@(item.Stock.PeRatio?.ToString("N2") ?? "—")</td>
+                    <td>@(roe?.ToString("N2") ?? "—")%</td>
+                    <td><strong>@item.IndustryRoceRank / @item.IndustrySampleSize</strong><small class="peer-median">中位數 @item.IndustryMedianRoce.ToString("N2")%</small></td><td><strong>@item.SizeRoceRank / @item.SizeSampleSize</strong><small class="peer-median">中位數 @item.SizeMedianRoce.ToString("N2")%</small></td>
+                    <td><span class="match-score">@item.Score.ToString("N1")</span></td>
+                    <td>@item.CoveragePercent.ToString("N0")%</td>
+                    <td><span class="source-pill">@item.Statement.SourceName</span></td>
+                    <td><a asp-page="/Stocks/Details" asp-route-stockNo="@item.Stock.StockNo" asp-route-year="@item.Statement.FiscalYear">查看 →</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+@if (Model.Scan.Status == MarketScanStatus.Running)
+{
+    <script>window.setTimeout(() => window.location.reload(), 5000);</script>
+}
+
+
+
+

@@ -1,0 +1,116 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "觀察清單";
+}
+<section class="hero">
+    <div>
+        <span class="eyebrow">YOUR CAPITAL EFFICIENCY BOARD</span>
+        <h1>把好公司，放在同一把尺上。</h1>
+        <p>ROCE 是起點，不是神諭。保留公式、期間與來源，讓每一分都能被追問。</p>
+    </div>
+    <a class="button button-primary" asp-page="/Stocks/Search">＋ 加入觀察標的</a>
+</section>
+<section class="focus-strip">
+    <div>
+        <span class="eyebrow">FOCUS COMPANIES</span>
+        <strong>重點企業快捷</strong>
+        <small>用這幾檔先建立 ROCE、EPS、本益比與 ROE 的比較基準。</small>
+    </div>
+    <div class="focus-actions">
+        @foreach (var company in FocusCompanies.Default)
+        {
+            <form method="post" asp-page="/Stocks/Search" asp-page-handler="Add">
+                <input type="hidden" name="stockNo" value="@company.StockNo" />
+                <button class="focus-chip" type="submit">
+                    <strong>@company.StockNo</strong>
+                    <span>@company.Name</span>
+                    <small>@company.Note</small>
+                </button>
+            </form>
+        }
+    </div>
+</section>
+@if (Model.Items.Count == 0)
+{
+    <section class="empty-state">
+        <div class="empty-icon">◎</div>
+        <h2>你的觀察清單還是空的</h2>
+        <p>先查一家公司。系統會自動整理最新季資料與近五個完整年度。</p>
+        <a class="button button-primary" asp-page="/Stocks/Search">查詢第一檔股票</a>
+    </section>
+}
+else
+{
+    <div class="toolbar">
+        <div><strong>@Model.Items.Count</strong> 檔觀察標的</div>
+        <form method="get">
+            <label>排序
+                <select name="sort" onchange="this.form.submit()">
+                    <option value="score" selected="@(Model.Sort == "score")">總分</option>
+                    <option value="roce" selected="@(Model.Sort == "roce")">ROCE</option>
+                    <option value="eps" selected="@(Model.Sort == "eps")">EPS</option>
+                    <option value="pe" selected="@(Model.Sort == "pe")">本益比</option>
+                    <option value="roe" selected="@(Model.Sort == "roe")">ROE</option>
+                    <option value="stock" selected="@(Model.Sort == "stock")">股票代號</option>
+                </select>
+            </label>
+        </form>
+    </div>
+    <section class="watch-grid">
+    @foreach (var item in Model.Items)
+    {
+        var roce = item.Score?.Metrics.FirstOrDefault(x => x.Key == MetricKey.Roce)?.Value;
+        var annual = item.SelectedAnnual;
+        var roe = annual is null ? null : FinancialCalculator.ValueFor(MetricKey.Roe, annual);
+        <article class="stock-card">
+            <div class="stock-card-top">
+                <div>
+                    <span class="market-tag">@(item.Stock.Market == MarketKind.Listed ? "上市" : "上櫃")</span>
+                    <span class="industry-tag">@(string.IsNullOrWhiteSpace(item.Stock.IndustryName) ? "未分類" : item.Stock.IndustryName)</span>
+                    <h2><a asp-page="/Stocks/Details" asp-route-stockNo="@item.Stock.StockNo">@item.Stock.StockNo @item.Stock.Name</a></h2>
+                </div>
+                @if (item.Score?.TotalScore is decimal total)
+                {
+                    <div class="score-orb"><strong>@total.ToString("0")</strong><span>分</span></div>
+                }
+                else
+                {
+                    <div class="score-orb muted"><strong>—</strong><span>未評分</span></div>
+                }
+            </div>
+            @if (item.Stock.StatementKind == StatementKind.Financial)
+            {
+                <div class="warning-strip">金融業不套用一般業 ROCE 評分</div>
+            }
+            else if (item.SelectedAnnual is null)
+            {
+                <div class="warning-strip">尚無完整年度資料，進入詳情即可抓取</div>
+            }
+            <div class="metric-row focus-metrics">
+                <div><span>年度</span><strong>@(annual?.FiscalYear.ToString() ?? "—")</strong></div>
+                <div><span>ROCE</span><strong>@(roce?.ToString("N2") ?? "—")%</strong></div>
+                <div><span>EPS</span><strong>@(annual?.Eps?.ToString("N2") ?? "—")</strong></div>
+                <div><span>收盤價</span><strong>@(item.Stock.ClosePrice?.ToString("N2") ?? "—")</strong></div>
+                <div><span>本益比</span><strong>@(item.Stock.PeRatio?.ToString("N2") ?? "—")</strong></div>
+                <div><span>ROE</span><strong>@(roe?.ToString("N2") ?? "—")%</strong></div>
+            </div>
+            <div class="card-meta-line"><span>資料覆蓋 @(item.Score?.CoveragePercent.ToString("N0") ?? "0")%</span><span>@(annual?.SourceName ?? "尚無完整年度來源")</span></div>
+            @if (item.PeerComparison is PeerComparison peer)
+            {
+                <div class="peer-line"><span>@peer.IndustryName · @CompanySizeBandLabels.Label(peer.SizeBand)</span><strong>同規模 @peer.SizeRoceRank / @peer.SizeSampleSize</strong><small>投入資本 @(peer.CapitalEmployed / 100000m).ToString("N1") 億</small></div>
+            }
+            <div class="card-actions">
+                <a asp-page="/Stocks/Details" asp-route-stockNo="@item.Stock.StockNo">查看分析 →</a>
+                <form method="post" asp-page-handler="Remove">
+                    <input type="hidden" name="stockNo" value="@item.Stock.StockNo" />
+                    <button class="link-danger" type="submit" data-confirm="確定要移除這檔股票嗎？">移除</button>
+                </form>
+            </div>
+        </article>
+    }
+    </section>
+}
+
+
+

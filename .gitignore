@@ -1,0 +1,13 @@
+**/bin/
+**/obj/
+.vs/
+.vscode/
+RoceTool.Web/App_Data/*.db
+RoceTool.Web/App_Data/*.db-*
+RoceTool.Web/App_Data/Keys/
+RoceTool.Web/App_Data/price-alert-state.json
+*.user
+*.suo
+*.log
+__pycache__/
+*.pyc

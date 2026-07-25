@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="RoceTool.Core/RoceTool.Core.csproj" />
+  <Project Path="RoceTool.Infrastructure/RoceTool.Infrastructure.csproj" />
+  <Project Path="RoceTool.Tests/RoceTool.Tests.csproj" />
+  <Project Path="RoceTool.Web/RoceTool.Web.csproj" />
+</Solution>

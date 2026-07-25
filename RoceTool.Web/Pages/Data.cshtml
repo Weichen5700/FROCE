@@ -1,0 +1,61 @@
+@page
+@model DataModel
+@{
+    ViewData["Title"] = "資料管理";
+}
+<section class="page-heading">
+    <span class="eyebrow">DATA PROVENANCE</span>
+    <h1>知道每個數字從哪裡來</h1>
+    <p>官方資料優先，CSV 補洞。不同來源不會悄悄混成同一張財報。</p>
+</section>
+<section class="summary-strip">
+    <div><span>公司清單</span><strong>@Model.StockCount.ToString("N0")</strong></div>
+    <div><span>財報紀錄</span><strong>@Model.StatementCount.ToString("N0")</strong></div>
+    <div><span>資料庫</span><strong>SQLite</strong></div>
+</section>
+<section class="two-column data-columns">
+    <article class="panel">
+        <div class="panel-heading"><div><span class="eyebrow">OFFICIAL</span><h2>官方資料更新</h2></div></div>
+        <p>更新證交所與櫃買中心公司清單、最新季一般業財報、每日收盤行情，以及本益比、股價淨值比與殖利率。</p>
+        <form method="post"><button class="button button-primary" asp-page-handler="UpdateOfficial" type="submit">立即更新官方資料</button></form>
+        <p class="hint">日常使用會自動套用 24 小時快取；歷史完整年度在股票詳情頁由 MOPS 取得。</p>
+    </article>
+    <article class="panel">
+        <div class="panel-heading"><div><span class="eyebrow">CSV FALLBACK</span><h2>CSV 預覽與匯入</h2></div><a asp-page-handler="Sample">下載範例</a></div>
+        <form method="post" enctype="multipart/form-data" asp-page-handler="Upload" class="upload-form">
+            <input asp-for="CsvFile" type="file" accept=".csv,text/csv" />
+            <label class="check-line"><input asp-for="Preferred" /> 將這批資料設為同期間的優先來源</label>
+            <div class="form-actions">
+                <button class="button" name="mode" value="preview" type="submit">只驗證預覽</button>
+                <button class="button button-primary" name="mode" value="import" type="submit">驗證並匯入</button>
+            </div>
+        </form>
+        <p class="hint">金額可用 TWD、ThousandTWD 或 MillionTWD；資料庫統一保存為新台幣千元。</p>
+    </article>
+</section>
+@if (Model.Preview is not null)
+{
+    <section class="panel">
+        <div class="panel-heading"><h2>CSV 預覽</h2><span>@Model.Preview.Rows.Count 筆可匯入 · @Model.Preview.Errors.Count 個錯誤</span></div>
+        @if (Model.Preview.Errors.Count > 0)
+        {
+            <ul class="error-list">@foreach (var error in Model.Preview.Errors) { <li>@error</li> }</ul>
+        }
+        <div class="table-wrap">
+            <table><thead><tr><th>股票</th><th>期間</th><th>營業利益</th><th>資產總額</th><th>流動負債</th><th>來源</th></tr></thead>
+            <tbody>@foreach (var row in Model.Preview.Rows.Take(30)) {
+                <tr><td>@row.StockNo</td><td>@row.FiscalYear @row.Period</td><td>@row.OperatingIncome?.ToString("N0")</td><td>@row.TotalAssets?.ToString("N0")</td><td>@row.CurrentLiabilities?.ToString("N0")</td><td>@row.SourceName</td></tr>
+            }</tbody></table>
+        </div>
+    </section>
+}
+<section class="panel">
+    <div class="panel-heading"><div><span class="eyebrow">LOG</span><h2>最近資料錯誤</h2></div></div>
+    @if (Model.Errors.Count == 0) { <p class="hint">目前沒有資料錯誤。</p> }
+    else
+    {
+        <div class="error-log">@foreach (var error in Model.Errors) {
+            <div><time>@error.CreatedAt.ToLocalTime().ToString("MM-dd HH:mm")</time><strong>@error.Provider</strong><span>@error.StockNo</span><p>@error.Message</p></div>
+        }</div>
+    }
+</section>

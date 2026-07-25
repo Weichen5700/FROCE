@@ -1,0 +1,1426 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>ROCE 觀察站專案架構視覺化</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;max-width:736px;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+</head>
+<body>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="ROCE 觀察站專案架構視覺化" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;ROCE 觀察站專案架構視覺化&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(--background) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: light-dark(rgb(255 255 255), rgb(24 24 24));
+  --foreground: light-dark(rgb(26 28 31), rgb(255 255 255));
+  --card: color-mix(in oklab, var(--foreground) 5%, transparent);
+  --card-foreground: var(--foreground);
+  --popover: light-dark(rgb(255 255 255), rgb(45 45 45));
+  --popover-foreground: var(--foreground);
+  --primary: light-dark(rgb(51 156 255), rgb(131 195 255));
+  --primary-foreground: light-dark(rgb(255 255 255), rgb(13 13 13));
+  --secondary: light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%));
+  --secondary-foreground: var(--foreground);
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: light-dark(
+    rgb(26 28 31 / 49.4%),
+    rgb(255 255 255 / 49.8%)
+  );
+  --accent: light-dark(rgb(229 242 255), rgb(13 39 63));
+  --accent-foreground: var(--primary);
+  --destructive: light-dark(rgb(226 85 7), rgb(255 133 73));
+  --border: light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%));
+  --input: light-dark(
+    rgb(26 28 31 / 11.8%),
+    color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+  );
+  --ring: light-dark(rgb(51 156 255), rgb(131 195 255 / 76%));
+  --font-size-base: 14px;
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --radius: 12.5px;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+  --color-background-primary: var(--background);
+  --color-text-primary: var(--foreground);
+  --color-border-secondary: var(--border);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  margin: 0;
+  padding: 5px;
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--viz-font-weight-medium);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead th {
+  padding-block: 8px;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 6px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: superellipse(1.5);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: superellipse(1.5);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+    [aria-pressed=&quot;true&quot;],
+    [aria-selected=&quot;true&quot;],
+    .is-selected
+  ) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;style&gt;
+#architecture-visual {
+  --font-size-base: 14px;
+  color: var(--foreground, CanvasText);
+  background: var(--background, Canvas);
+  font-family: system-ui, -apple-system, &quot;Segoe UI&quot;, sans-serif;
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  width: 100%;
+}
+#architecture-visual * { box-sizing: border-box; }
+#architecture-visual .page-header { display: grid; gap: 0.5rem; margin-bottom: 1rem; }
+#architecture-visual h1,
+#architecture-visual h2,
+#architecture-visual h3 { margin: 0; font-weight: 500; color: var(--foreground, CanvasText); }
+#architecture-visual h1 { font-size: 1.55rem; }
+#architecture-visual h2 { font-size: 1.15rem; }
+#architecture-visual h3 { font-size: 0.95rem; }
+#architecture-visual .eyebrow { color: var(--muted-foreground, GrayText); font-size: 0.82rem; letter-spacing: 0.04em; }
+#architecture-visual .intro { margin: 0; color: var(--muted-foreground, GrayText); }
+#architecture-visual .viz-controls { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.75rem 0 0; }
+#architecture-visual .selected-state { margin: 0 0 1rem; color: var(--muted-foreground, GrayText); }
+#architecture-visual .diagram-panel { display: grid; gap: 0.8rem; }
+#architecture-visual .diagram-panel[hidden] { display: none; }
+#architecture-visual .diagram-caption { margin: 0; color: var(--muted-foreground, GrayText); }
+#architecture-visual .diagram-frame { width: 100%; overflow: hidden; }
+#architecture-visual svg { display: block; width: 100%; height: auto; color: var(--foreground, CanvasText); }
+#architecture-visual .svg-edge { fill: none; stroke: currentColor; stroke-width: 1.5; opacity: 0.72; marker-end: url(#arch-arrow); }
+#architecture-visual .svg-edge.seq { marker-end: url(#seq-arrow); }
+#architecture-visual .svg-edge.dep { marker-end: url(#dep-arrow); }
+#architecture-visual .svg-edge.start { marker-end: url(#start-arrow); }
+#architecture-visual .svg-edge-label { fill: var(--muted-foreground, GrayText); font-size: 12px; text-anchor: middle; }
+#architecture-visual .svg-lane { stroke: currentColor; stroke-width: 1; stroke-dasharray: 4 5; opacity: 0.22; }
+#architecture-visual .node-surface { fill: var(--card, Canvas); stroke: var(--border, currentColor); stroke-width: 1.4; }
+#architecture-visual .node-web .node-surface { fill: var(--primary, currentColor); fill-opacity: 0.14; }
+#architecture-visual .node-core .node-surface { fill: var(--viz-series-2, currentColor); fill-opacity: 0.14; }
+#architecture-visual .node-infra .node-surface { fill: var(--viz-series-3, currentColor); fill-opacity: 0.14; }
+#architecture-visual .node-external .node-surface { fill: var(--viz-series-4, currentColor); fill-opacity: 0.14; }
+#architecture-visual .node-worker .node-surface { fill: var(--viz-series-5, currentColor); fill-opacity: 0.14; }
+#architecture-visual .svg-title { fill: var(--foreground, CanvasText); font-size: 15px; font-weight: 500; text-anchor: middle; }
+#architecture-visual .svg-sub { fill: var(--muted-foreground, GrayText); font-size: 11px; text-anchor: middle; }
+#architecture-visual .svg-note { fill: var(--muted-foreground, GrayText); font-size: 12px; }
+#architecture-visual .svg-step { fill: var(--foreground, CanvasText); font-size: 14px; font-weight: 500; }
+#architecture-visual .svg-step-sub { fill: var(--muted-foreground, GrayText); font-size: 11px; }
+#architecture-visual .svg-number { fill: var(--primary, currentColor); fill-opacity: 0.18; stroke: var(--primary, currentColor); stroke-width: 1.3; }
+#architecture-visual .svg-number-text { fill: var(--foreground, CanvasText); font-size: 14px; font-weight: 500; text-anchor: middle; dominant-baseline: middle; }
+#architecture-visual .node-guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 0.55rem 1rem; margin: 0; padding: 0; list-style: none; }
+#architecture-visual .node-guide li { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem; align-items: start; padding: 0.2rem 0; }
+#architecture-visual .guide-label { color: var(--foreground, CanvasText); font-weight: 500; }
+#architecture-visual .guide-copy { color: var(--muted-foreground, GrayText); }
+#architecture-visual .legend-mark { width: 0.55rem; height: 0.55rem; margin-top: 0.42rem; border-radius: 50%; background: var(--primary, currentColor); }
+#architecture-visual .source-note { margin: 1rem 0 0; color: var(--muted-foreground, GrayText); font-size: 0.83rem; }
+#architecture-visual code { color: var(--foreground, CanvasText); }
+@media (max-width: 520px) {
+  #architecture-visual h1 { font-size: 1.3rem; }
+  #architecture-visual .svg-edge-label { font-size: 10px; }
+  #architecture-visual .svg-title { font-size: 13px; }
+  #architecture-visual .svg-sub { font-size: 10px; }
+}
+&lt;/style&gt;
+
+&lt;div id=&quot;architecture-visual&quot;&gt;
+  &lt;header class=&quot;page-header&quot;&gt;
+    &lt;div class=&quot;eyebrow&quot;&gt;ROCE 觀察站 · Workspace architecture&lt;/div&gt;
+    &lt;h1&gt;專案架構視覺化&lt;/h1&gt;
+    &lt;p class=&quot;intro&quot;&gt;以目前程式碼為依據，整理 Web 層、Core、Infrastructure、SQLite、官方資料源與背景掃描工作的邊界。&lt;/p&gt;
+    &lt;nav class=&quot;viz-controls&quot; aria-label=&quot;架構圖切換&quot;&gt;
+      &lt;button type=&quot;button&quot; class=&quot;btn btn-primary&quot; data-view=&quot;architecture&quot; aria-pressed=&quot;true&quot;&gt;系統架構圖&lt;/button&gt;
+      &lt;button type=&quot;button&quot; class=&quot;btn btn-ghost&quot; data-view=&quot;sequence&quot; aria-pressed=&quot;false&quot;&gt;Sequence Diagram&lt;/button&gt;
+      &lt;button type=&quot;button&quot; class=&quot;btn btn-ghost&quot; data-view=&quot;dependencies&quot; aria-pressed=&quot;false&quot;&gt;模組依賴圖&lt;/button&gt;
+      &lt;button type=&quot;button&quot; class=&quot;btn btn-ghost&quot; data-view=&quot;startup&quot; aria-pressed=&quot;false&quot;&gt;啟動流程圖&lt;/button&gt;
+    &lt;/nav&gt;
+  &lt;/header&gt;
+
+  &lt;div class=&quot;selected-state&quot; role=&quot;status&quot; aria-live=&quot;polite&quot; data-selected&gt;目前檢視：系統架構圖&lt;/div&gt;
+
+  &lt;main&gt;
+    &lt;section class=&quot;diagram-panel&quot; data-panel=&quot;architecture&quot; aria-labelledby=&quot;architecture-heading&quot;&gt;
+      &lt;h2 id=&quot;architecture-heading&quot;&gt;系統架構圖&lt;/h2&gt;
+      &lt;p class=&quot;diagram-caption&quot;&gt;瀏覽器從 Razor Pages 或 Minimal API 進入，核心服務協調 SQLite 與兩組官方資料來源；全市場掃描由 hosted worker 非同步處理。&lt;/p&gt;
+      &lt;div class=&quot;diagram-frame&quot;&gt;
+        &lt;svg viewBox=&quot;0 0 920 540&quot; role=&quot;img&quot; aria-labelledby=&quot;arch-svg-title arch-svg-desc&quot;&gt;
+          &lt;title id=&quot;arch-svg-title&quot;&gt;ROCE 觀察站系統架構圖&lt;/title&gt;
+          &lt;desc id=&quot;arch-svg-desc&quot;&gt;顯示 Web、Core、Infrastructure、SQLite、TWSE TPEx、MOPS、背景工作者、測試與價格提醒工具之間的責任與資料流。&lt;/desc&gt;
+          &lt;defs&gt;
+            &lt;marker id=&quot;arch-arrow&quot; markerWidth=&quot;9&quot; markerHeight=&quot;9&quot; refX=&quot;8&quot; refY=&quot;4.5&quot; orient=&quot;auto&quot;&gt;
+              &lt;path d=&quot;M0,0 L9,4.5 L0,9 z&quot; fill=&quot;currentColor&quot;&gt;&lt;/path&gt;
+            &lt;/marker&gt;
+          &lt;/defs&gt;
+          &lt;path class=&quot;svg-edge&quot; d=&quot;M185 112 H235&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge&quot; d=&quot;M395 112 H435&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge&quot; d=&quot;M600 112 H635&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge&quot; d=&quot;M720 160 V215&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge&quot; d=&quot;M760 160 V215&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge&quot; d=&quot;M680 160 V240 H425 V250&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge&quot; d=&quot;M805 160 V350 H710 V355&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge&quot; d=&quot;M615 400 H425 V340&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge&quot; d=&quot;M205 280 H275&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge&quot; d=&quot;M205 410 H435 V150&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge&quot; d=&quot;M205 280 H470 V260&quot;&gt;&lt;/path&gt;
+
+          &lt;g class=&quot;node node-web&quot; transform=&quot;translate(30 65)&quot;&gt;
+            &lt;rect class=&quot;node-surface&quot; width=&quot;155&quot; height=&quot;95&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;
+            &lt;text class=&quot;svg-title&quot; x=&quot;77.5&quot; y=&quot;36&quot;&gt;使用者端&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;77.5&quot; y=&quot;58&quot;&gt;瀏覽器／Razor UI&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;77.5&quot; y=&quot;76&quot;&gt;搜尋、詳情、篩選&lt;/text&gt;
+          &lt;/g&gt;
+          &lt;g class=&quot;node node-web&quot; transform=&quot;translate(235 65)&quot;&gt;
+            &lt;rect class=&quot;node-surface&quot; width=&quot;160&quot; height=&quot;95&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;
+            &lt;text class=&quot;svg-title&quot; x=&quot;80&quot; y=&quot;36&quot;&gt;Web 層&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;80&quot; y=&quot;58&quot;&gt;Program.cs&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;80&quot; y=&quot;76&quot;&gt;Razor Pages／API&lt;/text&gt;
+          &lt;/g&gt;
+          &lt;g class=&quot;node node-core&quot; transform=&quot;translate(435 65)&quot;&gt;
+            &lt;rect class=&quot;node-surface&quot; width=&quot;165&quot; height=&quot;95&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;
+            &lt;text class=&quot;svg-title&quot; x=&quot;82.5&quot; y=&quot;36&quot;&gt;Core&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;82.5&quot; y=&quot;58&quot;&gt;模型／介面&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;82.5&quot; y=&quot;76&quot;&gt;ROCE／評分計算&lt;/text&gt;
+          &lt;/g&gt;
+          &lt;g class=&quot;node node-infra&quot; transform=&quot;translate(635 65)&quot;&gt;
+            &lt;rect class=&quot;node-surface&quot; width=&quot;175&quot; height=&quot;95&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;
+            &lt;text class=&quot;svg-title&quot; x=&quot;87.5&quot; y=&quot;36&quot;&gt;Infrastructure&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;87.5&quot; y=&quot;58&quot;&gt;StockAnalysisService&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;87.5&quot; y=&quot;76&quot;&gt;資料協調與持久化&lt;/text&gt;
+          &lt;/g&gt;
+          &lt;g class=&quot;node node-external&quot; transform=&quot;translate(275 250)&quot;&gt;
+            &lt;rect class=&quot;node-surface&quot; width=&quot;150&quot; height=&quot;90&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;
+            &lt;text class=&quot;svg-title&quot; x=&quot;75&quot; y=&quot;35&quot;&gt;SQLite&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;75&quot; y=&quot;57&quot;&gt;roce.db&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;75&quot; y=&quot;75&quot;&gt;股票／財報／掃描狀態&lt;/text&gt;
+          &lt;/g&gt;
+          &lt;g class=&quot;node node-external&quot; transform=&quot;translate(470 215)&quot;&gt;
+            &lt;rect class=&quot;node-surface&quot; width=&quot;160&quot; height=&quot;90&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;
+            &lt;text class=&quot;svg-title&quot; x=&quot;80&quot; y=&quot;35&quot;&gt;TWSE／TPEx&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;80&quot; y=&quot;57&quot;&gt;OpenAPI&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;80&quot; y=&quot;75&quot;&gt;清單／估值／行情／季報&lt;/text&gt;
+          &lt;/g&gt;
+          &lt;g class=&quot;node node-external&quot; transform=&quot;translate(700 215)&quot;&gt;
+            &lt;rect class=&quot;node-surface&quot; width=&quot;160&quot; height=&quot;90&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;
+            &lt;text class=&quot;svg-title&quot; x=&quot;80&quot; y=&quot;35&quot;&gt;MOPS iXBRL&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;80&quot; y=&quot;57&quot;&gt;MOPSAnnualReportProvider&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;80&quot; y=&quot;75&quot;&gt;完整年度／最新季&lt;/text&gt;
+          &lt;/g&gt;
+          &lt;g class=&quot;node node-worker&quot; transform=&quot;translate(615 355)&quot;&gt;
+            &lt;rect class=&quot;node-surface&quot; width=&quot;190&quot; height=&quot;90&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;
+            &lt;text class=&quot;svg-title&quot; x=&quot;95&quot; y=&quot;35&quot;&gt;背景工作者&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;95&quot; y=&quot;57&quot;&gt;MarketScanWorker&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;95&quot; y=&quot;75&quot;&gt;逐檔掃描並保存進度&lt;/text&gt;
+          &lt;/g&gt;
+          &lt;g class=&quot;node node-core&quot; transform=&quot;translate(25 365)&quot;&gt;
+            &lt;rect class=&quot;node-surface&quot; width=&quot;180&quot; height=&quot;90&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;
+            &lt;text class=&quot;svg-title&quot; x=&quot;90&quot; y=&quot;35&quot;&gt;測試專案&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;90&quot; y=&quot;57&quot;&gt;RoceTool.Tests&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;90&quot; y=&quot;75&quot;&gt;計算、來源、篩選回歸測試&lt;/text&gt;
+          &lt;/g&gt;
+          &lt;g class=&quot;node node-worker&quot; transform=&quot;translate(25 225)&quot;&gt;
+            &lt;rect class=&quot;node-surface&quot; width=&quot;180&quot; height=&quot;90&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;
+            &lt;text class=&quot;svg-title&quot; x=&quot;90&quot; y=&quot;35&quot;&gt;價格提醒工具&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;90&quot; y=&quot;57&quot;&gt;tools/price_roce_watch.py&lt;/text&gt;
+            &lt;text class=&quot;svg-sub&quot; x=&quot;90&quot; y=&quot;75&quot;&gt;讀 SQLite＋抓行情&lt;/text&gt;
+          &lt;/g&gt;
+          &lt;text class=&quot;svg-note&quot; x=&quot;30&quot; y=&quot;500&quot;&gt;實線箭頭：主要依賴／資料流　　節點內文字：責任摘要&lt;/text&gt;
+        &lt;/svg&gt;
+      &lt;/div&gt;
+      &lt;ul class=&quot;node-guide&quot; aria-label=&quot;系統架構節點說明&quot;&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;使用者端&lt;/span&gt;：透過瀏覽器使用搜尋、股票詳情、觀察清單與篩選功能。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;Web 層&lt;/span&gt;：由 &lt;code&gt;Program.cs&lt;/code&gt; 設定 ASP.NET Core、Razor Pages 與 Minimal API。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;Core&lt;/span&gt;：定義介面、領域模型、ROCE、品質指標與分數引擎。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;Infrastructure&lt;/span&gt;：協調資料源、SQLite、個股分析、匯入與市場掃描。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;SQLite&lt;/span&gt;：保存股票、觀察清單、財報、評分模板、錯誤與掃描狀態。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;TWSE／TPEx&lt;/span&gt;：提供公司清單、產業、最新季財報、估值與行情。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;MOPS iXBRL&lt;/span&gt;：提供最近五個完整年度與最新季補充欄位。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;背景工作者&lt;/span&gt;：由 DI 註冊為 hosted service，逐檔執行全市場年報掃描。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;價格提醒工具&lt;/span&gt;：直接讀取本機 SQLite，再依官方行情檢查 ROCE 與回落條件。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;測試專案&lt;/span&gt;：覆蓋計算器、資料提供者、評分引擎與股票篩選。&lt;/span&gt;&lt;/li&gt;
+      &lt;/ul&gt;
+    &lt;/section&gt;
+
+    &lt;section class=&quot;diagram-panel&quot; data-panel=&quot;sequence&quot; aria-labelledby=&quot;sequence-heading&quot; hidden&gt;
+      &lt;h2 id=&quot;sequence-heading&quot;&gt;Sequence Diagram&lt;/h2&gt;
+      &lt;p class=&quot;diagram-caption&quot;&gt;主場景是「使用者開啟股票詳情並需要刷新資料」；下方同時標出正常查詢、計算、MOPS 補資料與背景掃描的時間順序。&lt;/p&gt;
+      &lt;div class=&quot;diagram-frame&quot;&gt;
+        &lt;svg viewBox=&quot;0 0 900 730&quot; role=&quot;img&quot; aria-labelledby=&quot;seq-svg-title seq-svg-desc&quot; style=&quot;marker-end: url(#seq-arrow)&quot;&gt;
+          &lt;title id=&quot;seq-svg-title&quot;&gt;股票分析與背景掃描循序圖&lt;/title&gt;
+          &lt;desc id=&quot;seq-svg-desc&quot;&gt;顯示使用者、Web、分析服務、Core、SQLite、官方資料源與背景工作者的訊息順序。&lt;/desc&gt;
+          &lt;defs&gt;
+            &lt;marker id=&quot;seq-arrow&quot; markerWidth=&quot;9&quot; markerHeight=&quot;9&quot; refX=&quot;8&quot; refY=&quot;4.5&quot; orient=&quot;auto&quot;&gt;
+              &lt;path d=&quot;M0,0 L9,4.5 L0,9 z&quot; fill=&quot;currentColor&quot;&gt;&lt;/path&gt;
+            &lt;/marker&gt;
+          &lt;/defs&gt;
+          &lt;line class=&quot;svg-lane&quot; x1=&quot;80&quot; y1=&quot;95&quot; x2=&quot;80&quot; y2=&quot;700&quot;&gt;&lt;/line&gt;
+          &lt;line class=&quot;svg-lane&quot; x1=&quot;205&quot; y1=&quot;95&quot; x2=&quot;205&quot; y2=&quot;700&quot;&gt;&lt;/line&gt;
+          &lt;line class=&quot;svg-lane&quot; x1=&quot;330&quot; y1=&quot;95&quot; x2=&quot;330&quot; y2=&quot;700&quot;&gt;&lt;/line&gt;
+          &lt;line class=&quot;svg-lane&quot; x1=&quot;455&quot; y1=&quot;95&quot; x2=&quot;455&quot; y2=&quot;700&quot;&gt;&lt;/line&gt;
+          &lt;line class=&quot;svg-lane&quot; x1=&quot;580&quot; y1=&quot;95&quot; x2=&quot;580&quot; y2=&quot;700&quot;&gt;&lt;/line&gt;
+          &lt;line class=&quot;svg-lane&quot; x1=&quot;705&quot; y1=&quot;95&quot; x2=&quot;705&quot; y2=&quot;700&quot;&gt;&lt;/line&gt;
+          &lt;line class=&quot;svg-lane&quot; x1=&quot;830&quot; y1=&quot;95&quot; x2=&quot;830&quot; y2=&quot;700&quot;&gt;&lt;/line&gt;
+
+          &lt;g class=&quot;node node-web&quot; transform=&quot;translate(25 25)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;110&quot; height=&quot;62&quot; rx=&quot;10&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;55&quot; y=&quot;36&quot;&gt;使用者&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-web&quot; transform=&quot;translate(150 25)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;110&quot; height=&quot;62&quot; rx=&quot;10&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;55&quot; y=&quot;29&quot;&gt;Web 層&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;55&quot; y=&quot;47&quot;&gt;頁面／API&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-infra&quot; transform=&quot;translate(275 25)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;110&quot; height=&quot;62&quot; rx=&quot;10&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;55&quot; y=&quot;29&quot;&gt;分析服務&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;55&quot; y=&quot;47&quot;&gt;StockAnalysis&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-core&quot; transform=&quot;translate(400 25)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;110&quot; height=&quot;62&quot; rx=&quot;10&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;55&quot; y=&quot;29&quot;&gt;Core&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;55&quot; y=&quot;47&quot;&gt;計算／評分&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-external&quot; transform=&quot;translate(525 25)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;110&quot; height=&quot;62&quot; rx=&quot;10&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;55&quot; y=&quot;29&quot;&gt;SQLite&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;55&quot; y=&quot;47&quot;&gt;本機資料庫&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-external&quot; transform=&quot;translate(650 25)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;110&quot; height=&quot;62&quot; rx=&quot;10&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;55&quot; y=&quot;29&quot;&gt;官方資料源&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;55&quot; y=&quot;47&quot;&gt;TWSE／TPEx／MOPS&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-worker&quot; transform=&quot;translate(775 25)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;110&quot; height=&quot;62&quot; rx=&quot;10&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;55&quot; y=&quot;29&quot;&gt;背景工作者&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;55&quot; y=&quot;47&quot;&gt;MarketScan&lt;/text&gt;&lt;/g&gt;
+
+          &lt;path class=&quot;svg-edge seq&quot; d=&quot;M80 135 H205&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;142&quot; y=&quot;127&quot;&gt;GET 詳情&lt;/text&gt;
+          &lt;path class=&quot;svg-edge seq&quot; d=&quot;M205 180 H330&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;267&quot; y=&quot;172&quot;&gt;GetAnalysisAsync&lt;/text&gt;
+          &lt;path class=&quot;svg-edge seq&quot; d=&quot;M330 225 H580&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;455&quot; y=&quot;217&quot;&gt;讀目錄／財報／模板&lt;/text&gt;
+          &lt;path class=&quot;svg-edge seq&quot; d=&quot;M580 270 H330&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;455&quot; y=&quot;262&quot;&gt;資料回傳&lt;/text&gt;
+          &lt;path class=&quot;svg-edge seq&quot; d=&quot;M330 315 H705&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;517&quot; y=&quot;307&quot;&gt;目錄過期時抓官方資料&lt;/text&gt;
+          &lt;path class=&quot;svg-edge seq&quot; d=&quot;M705 360 H330&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;517&quot; y=&quot;352&quot;&gt;股票、估值、季報&lt;/text&gt;
+          &lt;path class=&quot;svg-edge seq&quot; d=&quot;M330 405 H455&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;392&quot; y=&quot;397&quot;&gt;ROCE／五項指標&lt;/text&gt;
+          &lt;path class=&quot;svg-edge seq&quot; d=&quot;M455 450 H330&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;392&quot; y=&quot;442&quot;&gt;ScoreBreakdown&lt;/text&gt;
+          &lt;path class=&quot;svg-edge seq&quot; d=&quot;M80 495 H205&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;142&quot; y=&quot;487&quot;&gt;POST Refresh&lt;/text&gt;
+          &lt;path class=&quot;svg-edge seq&quot; d=&quot;M205 540 H330&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;267&quot; y=&quot;532&quot;&gt;RefreshStockAsync&lt;/text&gt;
+          &lt;path class=&quot;svg-edge seq&quot; d=&quot;M330 585 H705&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;517&quot; y=&quot;577&quot;&gt;最近五年 MOPS 年報&lt;/text&gt;
+          &lt;path class=&quot;svg-edge seq&quot; d=&quot;M705 630 H330&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;517&quot; y=&quot;622&quot;&gt;FinancialStatement&lt;/text&gt;
+          &lt;path class=&quot;svg-edge seq&quot; d=&quot;M330 675 H580&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;455&quot; y=&quot;667&quot;&gt;Upsert＋DataError＋進度&lt;/text&gt;
+          &lt;path class=&quot;svg-edge seq&quot; d=&quot;M830 495 H580&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;705&quot; y=&quot;487&quot;&gt;背景掃描寫入進度&lt;/text&gt;
+
+          &lt;rect x=&quot;30&quot; y=&quot;105&quot; width=&quot;840&quot; height=&quot;335&quot; rx=&quot;12&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-dasharray=&quot;4 5&quot; opacity=&quot;0.28&quot;&gt;&lt;/rect&gt;
+          &lt;text class=&quot;svg-note&quot; x=&quot;45&quot; y=&quot;125&quot;&gt;查詢／分析階段&lt;/text&gt;
+          &lt;rect x=&quot;30&quot; y=&quot;465&quot; width=&quot;840&quot; height=&quot;235&quot; rx=&quot;12&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-dasharray=&quot;4 5&quot; opacity=&quot;0.28&quot;&gt;&lt;/rect&gt;
+          &lt;text class=&quot;svg-note&quot; x=&quot;45&quot; y=&quot;485&quot;&gt;刷新／背景補資料階段&lt;/text&gt;
+        &lt;/svg&gt;
+      &lt;/div&gt;
+      &lt;ul class=&quot;node-guide&quot; aria-label=&quot;Sequence Diagram 節點說明&quot;&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;使用者&lt;/span&gt;：發出搜尋、開啟詳情、刷新或啟動掃描的操作。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;Web 層&lt;/span&gt;：把 HTTP／Razor Page handler 轉成服務呼叫並回傳畫面或 JSON。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;分析服務&lt;/span&gt;：執行目錄同步、資料選源、個股分析、觀察清單與刷新。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;Core&lt;/span&gt;：從財報欄位計算已動用資本、ROCE、品質分數與覆蓋率。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;SQLite&lt;/span&gt;：提供查詢資料，並接收財報、錯誤、模板與掃描進度。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;官方資料源&lt;/span&gt;：TWSE／TPEx 提供日常資料，MOPS 提供完整年度與最新季補充。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;背景工作者&lt;/span&gt;：獨立於使用者請求之外，依狀態逐檔抓取年度年報。&lt;/span&gt;&lt;/li&gt;
+      &lt;/ul&gt;
+    &lt;/section&gt;
+
+    &lt;section class=&quot;diagram-panel&quot; data-panel=&quot;dependencies&quot; aria-labelledby=&quot;dependencies-heading&quot; hidden&gt;
+      &lt;h2 id=&quot;dependencies-heading&quot;&gt;模組依賴圖&lt;/h2&gt;
+      &lt;p class=&quot;diagram-caption&quot;&gt;箭頭代表編譯期專案參考、DI 註冊或執行期資料依賴；Core 保持低耦合，外部資料與 SQLite 集中在 Infrastructure。&lt;/p&gt;
+      &lt;div class=&quot;diagram-frame&quot;&gt;
+        &lt;svg viewBox=&quot;0 0 920 560&quot; role=&quot;img&quot; aria-labelledby=&quot;dep-svg-title dep-svg-desc&quot; style=&quot;marker-end: url(#dep-arrow)&quot;&gt;
+          &lt;title id=&quot;dep-svg-title&quot;&gt;ROCE 觀察站模組依賴圖&lt;/title&gt;
+          &lt;desc id=&quot;dep-svg-desc&quot;&gt;顯示 Web、Core、Infrastructure、Tests、SQLite、官方提供者、MOPS、MarketScanWorker、價格提醒工具之依賴方向。&lt;/desc&gt;
+          &lt;defs&gt;
+            &lt;marker id=&quot;dep-arrow&quot; markerWidth=&quot;9&quot; markerHeight=&quot;9&quot; refX=&quot;8&quot; refY=&quot;4.5&quot; orient=&quot;auto&quot;&gt;
+              &lt;path d=&quot;M0,0 L9,4.5 L0,9 z&quot; fill=&quot;currentColor&quot;&gt;&lt;/path&gt;
+            &lt;/marker&gt;
+          &lt;/defs&gt;
+          &lt;path class=&quot;svg-edge dep&quot; d=&quot;M200 110 H265&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;232&quot; y=&quot;101&quot;&gt;ProjectReference&lt;/text&gt;
+          &lt;path class=&quot;svg-edge dep&quot; d=&quot;M200 135 V220 H350 V260&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;274&quot; y=&quot;211&quot;&gt;使用介面&lt;/text&gt;
+          &lt;path class=&quot;svg-edge dep&quot; d=&quot;M435 110 H500&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;467&quot; y=&quot;101&quot;&gt;ProjectReference&lt;/text&gt;
+          &lt;path class=&quot;svg-edge dep&quot; d=&quot;M740 110 H435 V150&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;590&quot; y=&quot;101&quot;&gt;測試 Core&lt;/text&gt;
+          &lt;path class=&quot;svg-edge dep&quot; d=&quot;M740 135 V205 H650 V260&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;708&quot; y=&quot;196&quot;&gt;測試 Infrastructure&lt;/text&gt;
+          &lt;path class=&quot;svg-edge dep&quot; d=&quot;M595 170 V250&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;620&quot; y=&quot;212&quot;&gt;EF Core&lt;/text&gt;
+          &lt;path class=&quot;svg-edge dep&quot; d=&quot;M500 305 H435 V350 H350&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;430&quot; y=&quot;340&quot;&gt;HttpClient／Provider&lt;/text&gt;
+          &lt;path class=&quot;svg-edge dep&quot; d=&quot;M350 350 V430&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;382&quot; y=&quot;397&quot;&gt;Hosted service&lt;/text&gt;
+          &lt;path class=&quot;svg-edge dep&quot; d=&quot;M350 475 H500&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;425&quot; y=&quot;466&quot;&gt;讀 SQLite&lt;/text&gt;
+          &lt;path class=&quot;svg-edge dep&quot; d=&quot;M435 305 H200&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;317&quot; y=&quot;296&quot;&gt;抓取財報&lt;/text&gt;
+          &lt;path class=&quot;svg-edge dep&quot; d=&quot;M595 350 V430 H500&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;638&quot; y=&quot;397&quot;&gt;背景寫入&lt;/text&gt;
+          &lt;path class=&quot;svg-edge dep&quot; d=&quot;M595 430 V350 H650&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;680&quot; y=&quot;397&quot;&gt;資料源&lt;/text&gt;
+          &lt;path class=&quot;svg-edge dep&quot; d=&quot;M595 475 H740&quot;&gt;&lt;/path&gt;&lt;text class=&quot;svg-edge-label&quot; x=&quot;667&quot; y=&quot;466&quot;&gt;官方行情&lt;/text&gt;
+
+          &lt;g class=&quot;node node-web&quot; transform=&quot;translate(30 65)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;170&quot; height=&quot;105&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;85&quot; y=&quot;36&quot;&gt;RoceTool.Web&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;85&quot; y=&quot;59&quot;&gt;Razor Pages&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;85&quot; y=&quot;78&quot;&gt;Minimal API／DI 組裝&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-core&quot; transform=&quot;translate(265 65)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;170&quot; height=&quot;105&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;85&quot; y=&quot;36&quot;&gt;RoceTool.Core&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;85&quot; y=&quot;59&quot;&gt;Interfaces&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;85&quot; y=&quot;78&quot;&gt;DomainModels／Calculators&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-infra&quot; transform=&quot;translate(500 65)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;190&quot; height=&quot;105&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;95&quot; y=&quot;36&quot;&gt;RoceTool.Infrastructure&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;95&quot; y=&quot;59&quot;&gt;Service／Provider&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;95&quot; y=&quot;78&quot;&gt;DbContext／Import&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-core&quot; transform=&quot;translate(740 65)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;150&quot; height=&quot;105&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;75&quot; y=&quot;36&quot;&gt;RoceTool.Tests&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;75&quot; y=&quot;59&quot;&gt;xUnit&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;75&quot; y=&quot;78&quot;&gt;回歸驗證&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-external&quot; transform=&quot;translate(30 255)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;170&quot; height=&quot;90&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;85&quot; y=&quot;35&quot;&gt;MOPS iXBRL&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;85&quot; y=&quot;57&quot;&gt;年度／季度財報&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;85&quot; y=&quot;75&quot;&gt;外部服務&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-external&quot; transform=&quot;translate(265 255)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;170&quot; height=&quot;90&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;85&quot; y=&quot;35&quot;&gt;TWSE／TPEx&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;85&quot; y=&quot;57&quot;&gt;OpenAPI／行情&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;85&quot; y=&quot;75&quot;&gt;外部服務&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-external&quot; transform=&quot;translate(500 255)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;190&quot; height=&quot;90&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;95&quot; y=&quot;35&quot;&gt;RoceDbContext&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;95&quot; y=&quot;57&quot;&gt;EF Core SQLite&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;95&quot; y=&quot;75&quot;&gt;資料表與 schema&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-worker&quot; transform=&quot;translate(265 430)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;170&quot; height=&quot;90&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;85&quot; y=&quot;35&quot;&gt;MarketScanWorker&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;85&quot; y=&quot;57&quot;&gt;BackgroundService&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;85&quot; y=&quot;75&quot;&gt;依序處理市場掃描&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-worker&quot; transform=&quot;translate(500 430)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;190&quot; height=&quot;90&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;text class=&quot;svg-title&quot; x=&quot;95&quot; y=&quot;35&quot;&gt;price_roce_watch.py&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;95&quot; y=&quot;57&quot;&gt;Python CLI&lt;/text&gt;&lt;text class=&quot;svg-sub&quot; x=&quot;95&quot; y=&quot;75&quot;&gt;ROCE／價格回落提醒&lt;/text&gt;&lt;/g&gt;
+          &lt;text class=&quot;svg-note&quot; x=&quot;30&quot; y=&quot;545&quot;&gt;主要邊界：Web 組裝、Core 定義規則、Infrastructure 實作 I/O、Tests 驗證行為。&lt;/text&gt;
+        &lt;/svg&gt;
+      &lt;/div&gt;
+      &lt;ul class=&quot;node-guide&quot; aria-label=&quot;模組依賴節點說明&quot;&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;RoceTool.Web&lt;/span&gt;：應用入口、頁面 handler、HTTP API 與依賴注入組裝。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;RoceTool.Core&lt;/span&gt;：無外部 I/O 的契約、模型與金融計算規則。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;RoceTool.Infrastructure&lt;/span&gt;：EF Core、HTTP provider、分析服務、CSV 匯入與掃描。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;RoceTool.Tests&lt;/span&gt;：以 xUnit 驗證 Core 與 Infrastructure 的可觀察行為。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;RoceDbContext&lt;/span&gt;：SQLite 的實體映射、唯一索引與資料庫初始化。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;MarketScanWorker&lt;/span&gt;：由 Infrastructure 註冊，使用 scoped DbContext 與財報 provider。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;price_roce_watch.py&lt;/span&gt;：獨立 CLI，讀取本機資料庫並抓取 TWSE／TPEx 行情。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;MOPS／TWSE／TPEx&lt;/span&gt;：Infrastructure 透過 provider 封裝外部資料格式與錯誤。&lt;/span&gt;&lt;/li&gt;
+      &lt;/ul&gt;
+    &lt;/section&gt;
+
+    &lt;section class=&quot;diagram-panel&quot; data-panel=&quot;startup&quot; aria-labelledby=&quot;startup-heading&quot; hidden&gt;
+      &lt;h2 id=&quot;startup-heading&quot;&gt;啟動流程圖&lt;/h2&gt;
+      &lt;p class=&quot;diagram-caption&quot;&gt;啟動路徑從 dotnet run 進入，先確保本機資料與服務可用，再開始接受頁面／API 請求並讓背景掃描待命。&lt;/p&gt;
+      &lt;div class=&quot;diagram-frame&quot;&gt;
+        &lt;svg viewBox=&quot;0 0 920 690&quot; role=&quot;img&quot; aria-labelledby=&quot;start-svg-title start-svg-desc&quot; style=&quot;marker-end: url(#start-arrow)&quot;&gt;
+          &lt;title id=&quot;start-svg-title&quot;&gt;ROCE 觀察站啟動流程圖&lt;/title&gt;
+          &lt;desc id=&quot;start-svg-desc&quot;&gt;顯示從 dotnet run、建立目錄、註冊服務、初始化資料庫、映射路由到啟動網站與背景工作者的步驟。&lt;/desc&gt;
+          &lt;defs&gt;
+            &lt;marker id=&quot;start-arrow&quot; markerWidth=&quot;9&quot; markerHeight=&quot;9&quot; refX=&quot;8&quot; refY=&quot;4.5&quot; orient=&quot;auto&quot;&gt;
+              &lt;path d=&quot;M0,0 L9,4.5 L0,9 z&quot; fill=&quot;currentColor&quot;&gt;&lt;/path&gt;
+            &lt;/marker&gt;
+          &lt;/defs&gt;
+          &lt;path class=&quot;svg-edge start&quot; d=&quot;M460 75 V105&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge start&quot; d=&quot;M460 150 V180&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge start&quot; d=&quot;M460 225 V255&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge start&quot; d=&quot;M460 300 V330&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge start&quot; d=&quot;M460 375 V405&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge start&quot; d=&quot;M460 450 V480&quot;&gt;&lt;/path&gt;
+          &lt;path class=&quot;svg-edge start&quot; d=&quot;M460 525 V555&quot;&gt;&lt;/path&gt;
+
+          &lt;g class=&quot;node node-web&quot; transform=&quot;translate(255 20)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;410&quot; height=&quot;55&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;circle class=&quot;svg-number&quot; cx=&quot;28&quot; cy=&quot;27.5&quot; r=&quot;17&quot;&gt;&lt;/circle&gt;&lt;text class=&quot;svg-number-text&quot; x=&quot;28&quot; y=&quot;27.5&quot;&gt;1&lt;/text&gt;&lt;text class=&quot;svg-step&quot; x=&quot;58&quot; y=&quot;25&quot;&gt;dotnet run&lt;/text&gt;&lt;text class=&quot;svg-step-sub&quot; x=&quot;58&quot; y=&quot;43&quot;&gt;載入 RoceTool.Web 專案&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-web&quot; transform=&quot;translate(255 105)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;410&quot; height=&quot;55&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;circle class=&quot;svg-number&quot; cx=&quot;28&quot; cy=&quot;27.5&quot; r=&quot;17&quot;&gt;&lt;/circle&gt;&lt;text class=&quot;svg-number-text&quot; x=&quot;28&quot; y=&quot;27.5&quot;&gt;2&lt;/text&gt;&lt;text class=&quot;svg-step&quot; x=&quot;58&quot; y=&quot;25&quot;&gt;建立 WebApplicationBuilder&lt;/text&gt;&lt;text class=&quot;svg-step-sub&quot; x=&quot;58&quot; y=&quot;43&quot;&gt;設定 URL、logging、Razor Pages&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-infra&quot; transform=&quot;translate(255 180)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;410&quot; height=&quot;55&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;circle class=&quot;svg-number&quot; cx=&quot;28&quot; cy=&quot;27.5&quot; r=&quot;17&quot;&gt;&lt;/circle&gt;&lt;text class=&quot;svg-number-text&quot; x=&quot;28&quot; y=&quot;27.5&quot;&gt;3&lt;/text&gt;&lt;text class=&quot;svg-step&quot; x=&quot;58&quot; y=&quot;25&quot;&gt;建立 App_Data 與 Keys&lt;/text&gt;&lt;text class=&quot;svg-step-sub&quot; x=&quot;58&quot; y=&quot;43&quot;&gt;準備 SQLite 與 Data Protection 金鑰目錄&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-infra&quot; transform=&quot;translate(255 255)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;410&quot; height=&quot;55&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;circle class=&quot;svg-number&quot; cx=&quot;28&quot; cy=&quot;27.5&quot; r=&quot;17&quot;&gt;&lt;/circle&gt;&lt;text class=&quot;svg-number-text&quot; x=&quot;28&quot; y=&quot;27.5&quot;&gt;4&lt;/text&gt;&lt;text class=&quot;svg-step&quot; x=&quot;58&quot; y=&quot;25&quot;&gt;AddRoceInfrastructure()&lt;/text&gt;&lt;text class=&quot;svg-step-sub&quot; x=&quot;58&quot; y=&quot;43&quot;&gt;註冊 DbContext、HttpClient、分析服務與 Worker&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-infra&quot; transform=&quot;translate(255 330)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;410&quot; height=&quot;55&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;circle class=&quot;svg-number&quot; cx=&quot;28&quot; cy=&quot;27.5&quot; r=&quot;17&quot;&gt;&lt;/circle&gt;&lt;text class=&quot;svg-number-text&quot; x=&quot;28&quot; y=&quot;27.5&quot;&gt;5&lt;/text&gt;&lt;text class=&quot;svg-step&quot; x=&quot;58&quot; y=&quot;25&quot;&gt;Build host 並建立 scope&lt;/text&gt;&lt;text class=&quot;svg-step-sub&quot; x=&quot;58&quot; y=&quot;43&quot;&gt;取得 RoceDbContext 執行初始化&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-external&quot; transform=&quot;translate(255 405)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;410&quot; height=&quot;55&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;circle class=&quot;svg-number&quot; cx=&quot;28&quot; cy=&quot;27.5&quot; r=&quot;17&quot;&gt;&lt;/circle&gt;&lt;text class=&quot;svg-number-text&quot; x=&quot;28&quot; y=&quot;27.5&quot;&gt;6&lt;/text&gt;&lt;text class=&quot;svg-step&quot; x=&quot;58&quot; y=&quot;25&quot;&gt;DatabaseInitializer.InitializeAsync()&lt;/text&gt;&lt;text class=&quot;svg-step-sub&quot; x=&quot;58&quot; y=&quot;43&quot;&gt;EnsureCreated、補欄位、掃描表與預設評分模板&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-web&quot; transform=&quot;translate(255 480)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;410&quot; height=&quot;55&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;circle class=&quot;svg-number&quot; cx=&quot;28&quot; cy=&quot;27.5&quot; r=&quot;17&quot;&gt;&lt;/circle&gt;&lt;text class=&quot;svg-number-text&quot; x=&quot;28&quot; y=&quot;27.5&quot;&gt;7&lt;/text&gt;&lt;text class=&quot;svg-step&quot; x=&quot;58&quot; y=&quot;25&quot;&gt;註冊 middleware 與路由&lt;/text&gt;&lt;text class=&quot;svg-step-sub&quot; x=&quot;58&quot; y=&quot;43&quot;&gt;Static Files、Routing、Authorization、Razor／API endpoint&lt;/text&gt;&lt;/g&gt;
+          &lt;g class=&quot;node node-worker&quot; transform=&quot;translate(255 555)&quot;&gt;&lt;rect class=&quot;node-surface&quot; width=&quot;410&quot; height=&quot;55&quot; rx=&quot;12&quot;&gt;&lt;/rect&gt;&lt;circle class=&quot;svg-number&quot; cx=&quot;28&quot; cy=&quot;27.5&quot; r=&quot;17&quot;&gt;&lt;/circle&gt;&lt;text class=&quot;svg-number-text&quot; x=&quot;28&quot; y=&quot;27.5&quot;&gt;8&lt;/text&gt;&lt;text class=&quot;svg-step&quot; x=&quot;58&quot; y=&quot;25&quot;&gt;RunAsync&lt;/text&gt;&lt;text class=&quot;svg-step-sub&quot; x=&quot;58&quot; y=&quot;43&quot;&gt;網站接受請求；MarketScanWorker 進入待命輪詢&lt;/text&gt;&lt;/g&gt;
+          &lt;text class=&quot;svg-note&quot; x=&quot;35&quot; y=&quot;635&quot;&gt;旁路 A：ApplicationStarted 在 Windows 且設定允許時開啟 AppUrl 瀏覽器。&lt;/text&gt;
+          &lt;text class=&quot;svg-note&quot; x=&quot;35&quot; y=&quot;655&quot;&gt;旁路 B：BackgroundService 等待 MarketScanState = Running 後逐檔處理。&lt;/text&gt;
+          &lt;text class=&quot;svg-note&quot; x=&quot;35&quot; y=&quot;675&quot;&gt;初始化是同步閘門：完成資料庫與服務準備後，Web 才進入 RunAsync。&lt;/text&gt;
+        &lt;/svg&gt;
+      &lt;/div&gt;
+      &lt;ul class=&quot;node-guide&quot; aria-label=&quot;啟動流程節點說明&quot;&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;dotnet run&lt;/span&gt;：以 Web 專案作為應用程式入口。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;Builder&lt;/span&gt;：讀取設定並配置 URL、logging 與頁面框架。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;App_Data／Keys&lt;/span&gt;：建立本機資料庫與 Data Protection 儲存位置。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;AddRoceInfrastructure&lt;/span&gt;：把 SQLite、官方 provider、分析服務與 hosted worker 放入 DI。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;DatabaseInitializer&lt;/span&gt;：確保資料表、相容欄位、掃描 schema 與預設評分模板存在。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;路由與 middleware&lt;/span&gt;：開放靜態檔、Razor Pages 及 /api/... 端點。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;RunAsync&lt;/span&gt;：啟動 HTTP server，背景 worker 同時等待可執行的掃描任務。&lt;/span&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;span class=&quot;legend-mark&quot;&gt;&lt;/span&gt;&lt;span&gt;&lt;span class=&quot;guide-label&quot;&gt;ApplicationStarted&lt;/span&gt;：Windows 且設定允許時，開啟 AppUrl 瀏覽器視窗。&lt;/span&gt;&lt;/li&gt;
+      &lt;/ul&gt;
+    &lt;/section&gt;
+  &lt;/main&gt;
+
+  &lt;p class=&quot;source-note&quot;&gt;程式碼依據：&lt;code&gt;RoceTool.Web/Program.cs&lt;/code&gt;、&lt;code&gt;RoceTool.Infrastructure/DependencyInjection.cs&lt;/code&gt;、&lt;code&gt;RoceTool.Infrastructure/RoceDbContext.cs&lt;/code&gt;、&lt;code&gt;RoceTool.Infrastructure/StockAnalysisService.cs&lt;/code&gt;、&lt;code&gt;RoceTool.Infrastructure/MarketScanService.cs&lt;/code&gt;。&lt;/p&gt;
+&lt;/div&gt;
+
+&lt;script&gt;
+(() =&gt; {
+  const root = document.getElementById(&quot;architecture-visual&quot;);
+  if (!root) return;
+  const labels = {
+    architecture: &quot;系統架構圖&quot;,
+    sequence: &quot;Sequence Diagram&quot;,
+    dependencies: &quot;模組依賴圖&quot;,
+    startup: &quot;啟動流程圖&quot;
+  };
+  const buttons = Array.from(root.querySelectorAll(&quot;[data-view]&quot;));
+  const panels = Array.from(root.querySelectorAll(&quot;[data-panel]&quot;));
+  const selected = root.querySelector(&quot;[data-selected]&quot;);
+  const selectView = (view) =&gt; {
+    buttons.forEach((button) =&gt; {
+      const active = button.dataset.view === view;
+      button.setAttribute(&quot;aria-pressed&quot;, String(active));
+      button.classList.toggle(&quot;btn-primary&quot;, active);
+      button.classList.toggle(&quot;btn-ghost&quot;, !active);
+    });
+    panels.forEach((panel) =&gt; {
+      panel.hidden = panel.dataset.panel !== view;
+    });
+    if (selected) selected.textContent = &quot;目前檢視：&quot; + (labels[view] || view);
+  };
+  buttons.forEach((button) =&gt; button.addEventListener(&quot;click&quot;, () =&gt; selectView(button.dataset.view)));
+  selectView(&quot;architecture&quot;);
+})();
+&lt;/script&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handleLeave = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>

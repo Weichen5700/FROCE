@@ -1,0 +1,78 @@
+@page
+@model RoceTool.Web.Pages.Stocks.SearchModel
+@{
+    ViewData["Title"] = "查詢股票";
+}
+<section class="page-heading">
+    <span class="eyebrow">DISCOVER</span>
+    <h1>查詢上市／上櫃公司</h1>
+    <p>輸入股票代號或公司簡稱。公司清單每日自動向官方來源更新。</p>
+</section>
+<div class="catalog-summary" aria-label="股票清單總數">
+    <div><strong>@Model.TotalCount.ToString("N0")</strong><span>家公司</span></div>
+    <div><span>上市</span><b>@Model.ListedCount.ToString("N0")</b></div>
+    <div><span>上櫃</span><b>@Model.OtcCount.ToString("N0")</b></div>
+    <small>目前官方公司清單總數</small>
+</div>
+<form method="get" class="search-box">
+    <input asp-for="Query" autofocus placeholder="例如：2330、台積電、環球晶" />
+    <button class="button button-primary" type="submit">搜尋</button>
+</form>
+<section class="focus-strip compact-focus">
+    <div>
+        <span class="eyebrow">WATCH STARTERS</span>
+        <strong>重點企業</strong>
+        <small>一鍵加入觀察，系統會抓近五年完整年度資料。</small>
+    </div>
+    <div class="focus-actions">
+        @foreach (var company in FocusCompanies.Default)
+        {
+            <form method="post" asp-page-handler="Add">
+                <input type="hidden" name="stockNo" value="@company.StockNo" />
+                <input type="hidden" asp-for="Query" />
+                <button class="focus-chip" type="submit">
+                    <strong>@company.StockNo</strong>
+                    <span>@company.Name</span>
+                    <small>@company.Note</small>
+                </button>
+            </form>
+        }
+    </div>
+</section>
+@if (!string.IsNullOrWhiteSpace(Model.Query) && Model.Results.Count == 0)
+{
+    <div class="empty-state compact"><h2>找不到符合的公司</h2><p>ETF、ETN 與權證不在財報公司清單內。</p></div>
+}
+else
+{
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>代號</th><th>公司</th><th>市場</th><th>產業</th><th>報表類型</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var stock in Model.Results)
+            {
+                <tr>
+                    <td><strong>@stock.StockNo</strong></td>
+                    <td>@stock.Name</td>
+                    <td>@(stock.Market == MarketKind.Listed ? "上市" : "上櫃")</td>
+                    <td><strong>@(string.IsNullOrWhiteSpace(stock.IndustryName) ? "未分類" : stock.IndustryName)</strong></td>
+                    <td>@(stock.StatementKind == StatementKind.General ? "一般業" : "金融／特殊業")</td>
+                    <td>
+                        <form method="post" asp-page-handler="Add">
+                            <input type="hidden" name="stockNo" value="@stock.StockNo" />
+                            <input type="hidden" name="Query" value="@Model.Query" />
+                            <button class="button button-small" type="submit">加入並分析</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    @if (string.IsNullOrWhiteSpace(Model.Query))
+    {
+        <p class="hint">先顯示前 50 家公司；輸入關鍵字可縮小範圍。</p>
+    }
+}
+
+
