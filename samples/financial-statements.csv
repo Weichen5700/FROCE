@@ -1,2 +1,2 @@
-StockNo,FiscalYear,Period,Unit,OperatingRevenue,OperatingIncome,NetIncome,CurrentAssets,TotalAssets,CurrentLiabilities,TotalLiabilities,TotalEquity,SourceName
-2330,2025,FY,ThousandTWD,3809054272,1936091677,1715396780,3817130817,7933023878,1458019289,2472228595,5460795283,手動匯入
+StockNo,FiscalYear,Period,Unit,OperatingRevenue,OperatingIncome,InterestIncome,NetIncome,CurrentAssets,TotalAssets,CurrentLiabilities,TotalLiabilities,TotalEquity,Eps,OperatingCashFlow,CapexPpe,CapexIntangibles,WeightedAverageShares,WeightedAverageSharesSource,SourceName
+2330,2025,FY,ThousandTWD,3809054272,1936091677,105739081,1715396780,3817130817,7933023878,1458019289,2472228595,5460795283,66.15,2754537827,-1212174401,-28753470,25930380458,基本股數,手動匯入

@@ -6,8 +6,16 @@ RoceTool.Web/App_Data/*.db
 RoceTool.Web/App_Data/*.db-*
 RoceTool.Web/App_Data/Keys/
 RoceTool.Web/App_Data/price-alert-state.json
+
+# User-specific database state, credentials and generated test evidence
+RoceTool.Web/App_Data/
+.playwright-mcp/
+tmp/
+build_log.txt
 *.user
 *.suo
 *.log
 __pycache__/
 *.pyc
+**/target/
+/RoceTool.PublicSite/

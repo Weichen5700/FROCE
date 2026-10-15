@@ -1,0 +1,202 @@
+@page "{stockNo}"
+@model RoceTool.Web.Pages.Finance.DetailsModel
+@using FinancialDetailsModel = RoceTool.Web.Pages.Finance.DetailsModel
+@{
+    var company = Model.Company;
+    var stock = company.Stock;
+    ViewData["Title"] = $"{stock.StockNo} {stock.Name} · 金融股";
+}
+<section class="detail-header finance-detail-header">
+    <div>
+        <div class="breadcrumb">
+            <a asp-page="/Finance" asp-route-query="@Model.Query" asp-route-sort="@Model.Sort" asp-route-direction="@Model.Direction" asp-route-onlyTarget="@Model.OnlyTarget">金融公司比較</a>
+            <span>／</span>@stock.StockNo @stock.Name
+        </div>
+        <div class="title-line">
+            <span class="market-tag">@(stock.Market == MarketKind.Listed ? "上市" : "上櫃")</span>
+            <h1>@stock.StockNo @stock.Name</h1>
+        </div>
+        <p>七年獲利、配息與金控組成 · @stock.IndustryName</p>
+    </div>
+    <div class="header-actions">
+        <form method="post" asp-page-handler="Dividends" data-progress-form="refresh">
+            <input type="hidden" asp-for="StockNo" /><input type="hidden" asp-for="Year" />
+            <input type="hidden" asp-for="Query" /><input type="hidden" asp-for="Sort" /><input type="hidden" asp-for="Direction" /><input type="hidden" asp-for="OnlyTarget" />
+            <input type="hidden" name="ScenarioYear" value="@Model.ScenarioYear" /><input type="hidden" name="ScenarioChange" value="@Model.ScenarioChange" /><input type="hidden" name="TargetYield" value="@Model.TargetYield" />
+            <button class="button" type="submit">更新官方股利</button>
+        </form>
+        <a class="button" asp-page="/Stocks/Details" asp-route-stockNo="@stock.StockNo" asp-route-year="@Model.Year" asp-route-marketView="true"
+           asp-route-financeQuery="@Model.Query" asp-route-financeSort="@Model.Sort" asp-route-financeDirection="@Model.Direction" asp-route-financeOnlyTarget="@Model.OnlyTarget"
+           asp-route-financeScenarioYear="@Model.ScenarioYear" asp-route-financeScenarioChange="@Model.ScenarioChange" asp-route-financeTargetYield="@Model.TargetYield">行情與觀察設定</a>
+        <a class="button button-primary" asp-page="/Finance" asp-route-query="@Model.Query" asp-route-sort="@Model.Sort" asp-route-direction="@Model.Direction" asp-route-onlyTarget="@Model.OnlyTarget">返回公司比較</a>
+    </div>
+</section>
+
+<nav class="finance-company-nav" aria-label="依列表排序切換金融公司">
+    @if (Model.PreviousCompany is Stock previous)
+    {
+        <a class="button" asp-page="/Finance/Details" asp-route-stockNo="@previous.StockNo" asp-route-year="@Model.Year"
+           asp-route-query="@Model.Query" asp-route-sort="@Model.Sort" asp-route-direction="@Model.Direction" asp-route-onlyTarget="@Model.OnlyTarget"
+           asp-route-scenarioYear="@Model.ScenarioYear" asp-route-scenarioChange="@Model.ScenarioChange" asp-route-targetYield="@Model.TargetYield">← @previous.StockNo @previous.Name</a>
+    }
+    else { <span class="finance-nav-placeholder">已是第一家</span> }
+    <span>@(Model.CompanyPosition > 0 ? $"原比較名單 {Model.CompanyPosition} / {Model.ComparisonCount}" : "目前公司未符合列表條件，返回列表可調整")</span>
+    @if (Model.NextCompany is Stock next)
+    {
+        <a class="button" asp-page="/Finance/Details" asp-route-stockNo="@next.StockNo" asp-route-year="@Model.Year"
+           asp-route-query="@Model.Query" asp-route-sort="@Model.Sort" asp-route-direction="@Model.Direction" asp-route-onlyTarget="@Model.OnlyTarget"
+           asp-route-scenarioYear="@Model.ScenarioYear" asp-route-scenarioChange="@Model.ScenarioChange" asp-route-targetYield="@Model.TargetYield">@next.StockNo @next.Name →</a>
+    }
+    else { <span class="finance-nav-placeholder">已是最後一家</span> }
+</nav>
+
+<nav class="finance-section-nav" aria-label="公司分析區塊">
+    <a href="#dividend-price" data-no-ajax>股價與 5% 參考</a>
+    <a href="#annual-comparison" data-no-ajax>年度 EPS 與配息</a>
+    <a href="#dividend-scenarios" data-no-ajax>配息情境</a>
+    <a href="#research-summary" data-no-ajax>業務、品質與資本</a>
+    <a href="#earnings-composition" data-no-ajax>子公司獲利</a>
+    <a href="#annual-report" data-no-ajax>年度財報與來源</a>
+</nav>
+
+<section id="dividend-price" class="panel finance-price-panel">
+    <div class="panel-heading"><div><span class="eyebrow">DIVIDEND & PRICE</span><h2>股價與 5% 現金配息參考</h2></div>
+        <span class="source-pill">@Model.ReferenceYear 盈餘年度</span>
+    </div>
+    <div class="financial-grid finance-price-grid">
+        <div><span>最新可用收盤價</span><strong>@(stock.ClosePrice is > 0 ? $"{stock.ClosePrice:N2} 元" : "—")</strong><small>@(company.QuoteTradingDate?.ToString("yyyy-MM-dd") ?? "交易日未標示")</small></div>
+        <div><span>普通股現金股利</span><strong>@(company.DividendFor(Model.ReferenceYear)?.CashPerShare is decimal cash ? $"{cash:0.###} 元／股" : "—")</strong><small>@(company.DividendFor(Model.ReferenceYear)?.DecisionStatus ?? "尚未取得")</small></div>
+        <div><span>現金殖利率試算</span><strong>@(company.CashYield(Model.ReferenceYear) is decimal cashYield ? $"{cashYield:N2}%" : "—")</strong><small>@(company.MeetsCashTarget(Model.ReferenceYear) ? "達到 5% 觀察條件" : company.IsOldQuote() ? "舊收盤參考，未納入門檻篩選" : "現金股利 ÷ 收盤價")</small></div>
+        <div><span>5% 現金參考價</span><strong>@(company.CashTargetPrice(Model.ReferenceYear) is decimal target ? $"{target:N2} 元" : "—")</strong><small>現金股利 ÷ 0.05</small></div>
+    </div>
+    @if (company.DividendFaceValueTotal(Model.ReferenceYear) is decimal total)
+    {
+        <p class="finance-total-reference">股利配發面額合計：<strong>@total.ToString("0.###") 元／股</strong>（現金＋股票配發面額）；合計參考率 <strong>@(company.FaceValueYield(Model.ReferenceYear) is decimal faceYield ? $"{faceYield:N2}%" : "—")</strong>。股票面額不是股票市值，這個比率不是現金殖利率或總報酬率。</p>
+    }
+    <p class="source-note">股價來源：@(string.IsNullOrWhiteSpace(stock.QuoteSource) ? "尚未取得" : stock.QuoteSource)。
+        @if (FinancePageData.QuoteSourceLink(stock) is string quoteSourceUrl) { <a href="@quoteSourceUrl" target="_blank" rel="noopener noreferrer">官方收盤資料 ↗</a> }
+        @if (stock.QuoteFetchedAt is DateTime fetchedAt) { <span>取得時間（臺北）：@DateTime.SpecifyKind(fetchedAt, DateTimeKind.Utc).AddHours(8).ToString("yyyy-MM-dd HH:mm")。</span> }
+    </p>
+    <p class="source-note">採上方交易日收盤，非盤中報價；以已申報股利試算，不保證未來維持，也不代表買進即可領取已除息的股利。證交所官方殖利率有不同配股口徑，本頁自行計算現金比率，未直接使用官方殖利率欄位。</p>
+</section>
+
+<section id="annual-comparison" class="panel finance-history-panel">
+    <div class="panel-heading">
+        <div><span class="eyebrow">EARNINGS & DIVIDENDS</span><h2>年度 EPS 與配息</h2></div>
+        <span class="source-pill">@company.EpsYearCount(Model.HistoryYears) / 7 年有 EPS · @Model.HistoryYears.Count(x => company.DividendFor(x) is not null) / 7 年有股利</span>
+    </div>
+    <p class="hint">七年資料直接並列。年度皆指盈餘所屬年度；普通股股利採官方申報，擬議資料會標示，未取得用「—」、明示不配息才顯示 0。</p>
+    <div class="table-wrap finance-history-table" tabindex="0" role="region" aria-label="七年 EPS 配息與獲利比較">
+        <table>
+            <thead><tr><th scope="col">盈餘年度</th><th scope="col">EPS（元）</th><th scope="col">EPS 增減（元）</th><th scope="col">現金股利<br />（元／股）</th><th scope="col">股票股利<br />（元／股）</th><th scope="col">現金盈餘<br />配發率（%）</th><th scope="col">歸屬母公司淨利<br />（億元）</th><th scope="col">本期淨利<br />（億元）</th><th scope="col">報表／股利狀態</th></tr></thead>
+            <tbody>
+            @foreach (var year in Model.HistoryYears)
+            {
+                var statement = company.StatementFor(year);
+                var dividend = company.DividendFor(year);
+                <tr>
+                    <th scope="row">@year</th>
+                    <td class="finance-primary-value">@(statement?.Eps?.ToString("N2") ?? "—")</td>
+                    <td>@FinancialDetailsModel.Signed(company.EpsChange(year))</td>
+                    <td class="finance-primary-value">@(dividend?.CashPerShare?.ToString("0.###") ?? "—")</td>
+                    <td>@(dividend?.StockPerShare?.ToString("0.###") ?? "—")</td>
+                    <td>@(company.CashPayoutRatio(year)?.ToString("N1") ?? "—")</td>
+                    <td>@FinancePageData.Money(statement?.ParentNetIncome)</td>
+                    <td>@FinancePageData.Money(statement?.NetIncome)</td>
+                    <td class="finance-data-status"><span>@FinancePageData.Basis(statement)</span><small>@(dividend?.DecisionStatus ?? "尚未取得股利申報")</small></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <p class="source-note">EPS 差額只列相鄰曆年的已收錄數值差，未核對重編、股本變動或合併，不能直接當可比成長。現金盈餘配發率 = 盈餘發放現金 ÷ 同年 EPS × 100%；不含公積配息，EPS ≤ 0 時不計算。</p>
+    <p class="source-note">歸屬母公司淨利與本期淨利分開；合併本期淨利可能包含非控制權益。金控合併報表已納入人壽、銀行等子公司，不能再相加。</p>
+</section>
+
+<partial name="_DividendScenarios" model="Model" />
+<partial name="_Research" model="Model" />
+
+<section id="earnings-composition" class="panel finance-composition-panel">
+    <div class="panel-heading"><div><span class="eyebrow">GROUP EARNINGS</span><h2>子公司獲利組成</h2></div></div>
+    <p class="hint">用來辨識獲利主要來自人壽、銀行、證券或產險。以下是各公司自身的全年損益；股權、非控制權益與合併沖銷會造成差異，不能當作金控獲利貢獻比例。</p>
+    @if (Model.SubsidiaryIncomes.Count == 0)
+    {
+        <div class="empty-state compact"><h3>尚未收錄官方子公司全年獲利</h3><p>此狀態不代表沒有子公司。合併報表的整體獲利已包含子公司；目前已整理富邦金、國泰金 2024／2025 官方法說資料，其餘公司與年度仍待來源補齊。</p></div>
+    }
+    else
+    {
+        var entities = Model.SubsidiaryIncomes.Select(x => x.EntityName).Distinct().ToList();
+        var years = Model.SubsidiaryIncomes.Select(x => x.FiscalYear).Distinct().OrderDescending().ToList();
+        <div class="table-wrap finance-composition-table" tabindex="0" role="region" aria-label="子公司各年度獲利">
+            <table>
+                <thead><tr><th scope="col">子公司／業務</th>@foreach (var year in years) { <th scope="col">@year 年（億元）</th> }<th scope="col">口徑／官方來源</th></tr></thead>
+                <tbody>
+                @foreach (var entity in entities)
+                {
+                    var rows = Model.SubsidiaryIncomes.Where(x => x.EntityName == entity).ToList();
+                    <tr><th scope="row"><strong>@entity</strong><small class="finance-eps-meta">@rows[0].Business</small></th>
+                        @foreach (var year in years)
+                        {
+                            var income = rows.Where(x => x.FiscalYear == year).OrderByDescending(x => x.FetchedAt).FirstOrDefault();
+                            <td>@FinancePageData.Money(income?.NetIncome)</td>
+                        }
+                        <td class="finance-income-basis">
+                            <span>@rows[0].Basis</span>
+                            @foreach (var row in rows.GroupBy(x => new { x.FiscalYear, x.SourceUrl }).Select(x => x.First()))
+                            {
+                                @if (FinancePageData.SourceLink(row.SourceUrl) is string url)
+                                { <small><a href="@url" target="_blank" rel="noopener noreferrer">@row.FiscalYear 年官方法說資料 ↗</a></small> }
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <p class="source-note">僅列已核實來源的主要子公司；未列者不代表獲利為 0，也不計算「合計差額」來推估其他子公司。尚未涵蓋所有七年。</p>
+    }
+</section>
+
+<section id="annual-report" class="panel finance-annual-report">
+    <div class="panel-heading"><div><span class="eyebrow">ANNUAL STATEMENTS & SOURCES</span><h2>年度財報與股利來源</h2></div></div>
+    <p class="hint">各年度財報與股利分項都在本頁，可直接查看；不需要再進入另一個年度頁面。</p>
+    <div class="table-wrap finance-balance-table" tabindex="0" role="region" aria-label="七年財報資產負債比較">
+        <table>
+            <thead><tr><th scope="col">年度</th><th scope="col">資產</th><th scope="col">負債</th><th scope="col">權益總額</th><th scope="col">母公司權益</th><th scope="col">簡化 ROE（%）</th><th scope="col">利息收入</th><th scope="col">營業收入</th></tr></thead>
+            <tbody>
+            @foreach (var year in Model.HistoryYears)
+            {
+                var statement = company.StatementFor(year);
+                <tr><th scope="row">@year</th><td>@FinancePageData.Money(statement?.TotalAssets)</td><td>@FinancePageData.Money(statement?.TotalLiabilities)</td>
+                    <td>@FinancePageData.Money(statement?.TotalEquity)</td><td>@FinancePageData.Money(statement?.ParentEquity)</td>
+                    <td>@(company.RoeFor(year)?.ToString("N2") ?? "—")</td><td>@FinancePageData.Money(statement?.InterestIncome)</td><td>@FinancePageData.Money(statement?.OperatingRevenue)</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <p class="source-note">金額為新臺幣億元。簡化 ROE = 本期淨利 ÷ 期末權益 × 100%，未採平均權益，與公司公布 ROE 可能不同。不套用一般業 ROCE 品質總分。</p>
+    <div class="finance-year-sources">
+    @foreach (var year in Model.HistoryYears)
+    {
+        var statement = company.StatementFor(year);
+        var dividend = company.DividendFor(year);
+        <details id="source-@year">
+            <summary>@year 年 · @FinancePageData.Basis(statement) · @(dividend?.DecisionStatus ?? "股利尚缺") · 來源與股利分項</summary>
+            @if (statement is not null)
+            {
+                <p>財報：@statement.SourceName；取得時間（臺北）：@DateTime.SpecifyKind(statement.FetchedAt, DateTimeKind.Utc).AddHours(8).ToString("yyyy-MM-dd HH:mm")。
+                @if (FinancePageData.SourceLink(statement) is string url) { <a href="@url" target="_blank" rel="noopener noreferrer">官方原始財報 ↗</a> }</p>
+                <p>期間：@year FY；原始金額單位：新臺幣千元，EPS：元／股。公布日、會計制度與原公告／重編版本尚未逐筆建檔；取得日不是公布日。研究區的法說數據另保留文件版本，未覆寫本表。</p>
+            }
+            else { <p>本機尚未取得 @year 年報；抓取失敗不代表官方沒有資料。</p> }
+            @if (dividend is not null)
+            {
+                <p>盈餘現金 @(dividend.CashEarnings?.ToString("0.###") ?? "—") 元／股、公積現金 @(dividend.CashReserves?.ToString("0.###") ?? "—") 元／股；盈餘股票 @(dividend.StockEarnings?.ToString("0.###") ?? "—") 元／股、公積股票 @(dividend.StockReserves?.ToString("0.###") ?? "—") 元／股。</p>
+                <p>進度：@dividend.DecisionStatus；申報董事會日期（民國）：@dividend.DecisionDate。此來源未提供實際發放日，決議日期不可當作除息或入帳日。
+                @if (FinancePageData.SourceLink(dividend.SourceUrl) is string dividendUrl) { <a href="@dividendUrl" target="_blank" rel="noopener noreferrer">MOPS 普通股股利申報 ↗</a> }</p>
+            }
+            else { <p>尚未取得 @year 盈餘年度的普通股股利，不當成 0。</p> }
+        </details>
+    }
+    </div>
+</section>

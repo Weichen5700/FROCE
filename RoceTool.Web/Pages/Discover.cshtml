@@ -1,0 +1,149 @@
+@page
+@model DiscoverModel
+@{
+    ViewData["Title"] = "外部名單驗證";
+    var hasResult = Model.Result is not null;
+}
+<section class="page-heading">
+    <span class="eyebrow">VERIFY YOUR OWN LIST</span>
+    <h1>外部名單驗證</h1>
+    <p>把你自己整理的股票名單貼進來，用本機已保存的年度財報與目前評分設定檢查是否達標。這頁不會自動搜尋新聞或產生推薦名單。</p>
+</section>
+
+@if (!hasResult)
+{
+    <section class="panel filter-panel">
+        <div class="panel-heading">
+            <div><span class="eyebrow">STEP 1 · 輸入名單</span><h2>你想檢查哪些股票？</h2></div>
+            @if (Model.Settings.LastVerifiedAt is DateTime lastTime)
+            {
+                <span class="source-pill">上次驗證：@lastTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+            }
+        </div>
+        <form method="post" asp-page-handler="Verify">
+            <div class="form-group">
+                <label>
+                    <span>股票清單（每行一檔；來源與筆記可選填）</span>
+                    <textarea asp-for="TargetsInput" rows="6" placeholder="2330&#10;2454,財經週刊,法說會提到新產品&#10;2308,自己的研究,想確認年度 ROCE"></textarea>
+                </label>
+                <p class="hint">
+                    每行格式：<code>股票代號,來源,筆記</code>。只填代號也可以；來源與筆記只供你回想這檔股票從哪裡來、為什麼要檢查。
+                </p>
+            </div>
+
+            <div class="filter-grid">
+                <label><span>最低年度 ROCE</span><div><input asp-for="MinRoce" type="number" step="0.1" /><b>%</b></div></label>
+                <label><span>最低品質分數（留白代表不檢查）</span><div><input asp-for="MinScore" type="number" min="0" max="100" step="1" /><b>分</b></div></label>
+                <button class="button button-primary" type="submit" data-busy-timeout="30000">
+                    <span data-button-label>比對本機財報</span>
+                    <span class="button-spinner" aria-hidden="true"></span>
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <section class="panel supplemental-panel discover-howto">
+        <div class="panel-heading"><div><span class="eyebrow">HOW TO USE</span><h2>這頁會做什麼</h2></div></div>
+        <ol>
+            <li>貼上你已經挑出的股票代號，可記下來源與關注原因。</li>
+            <li>系統用目前保存的最新年度 ROCE 和評分模板比對你設定的門檻。</li>
+            <li>查看未達標或本機找不到的項目；只有通過的股票提供「加入觀察」按鈕，由你決定是否加入。</li>
+        </ol>
+        <p class="hint">本頁不會替你追蹤媒體、抓取外部推薦或自動新增觀察股票。若本機缺少公司或財報資料，先到「資料管理」更新公司清單，或到股票詳情重新整理財報。</p>
+    </section>
+}
+else
+{
+    <section class="summary-strip discover-summary">
+        <div><span>輸入標的</span><strong>@Model.Result!.TotalTargets</strong><small>檔股票</small></div>
+        <div><span>公司清單命中</span><strong>@Model.Result.VerifiedCount</strong><small>檔可查看</small></div>
+        <div><span>公司清單未找到</span><strong>@Model.UnverifiedCount</strong><small>可先更新公司清單</small></div>
+        <div><span>通過篩選</span><strong class="@(Model.Result.PassedCount > 0 ? "passed" : "")">@Model.Result.PassedCount</strong><small>檔符合條件</small></div>
+    </section>
+
+    <div class="toolbar">
+        <div><strong>@Model.Result.VerifiedCount</strong> 檔可查看 · 驗證時間 @Model.Result.VerifiedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+        <a class="button" asp-page="/Discover">重新輸入</a>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>結果</th>
+                    <th>股票</th>
+                    <th>市場</th>
+                    <th>年度ROCE</th>
+                    <th>季度ROCE</th>
+                    <th>最新年度</th>
+                    <th>最新季度</th>
+                    <th>品質分數</th>
+                    <th>覆蓋率</th>
+                    <th>來源</th>
+                    <th>筆記</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model.Items)
+            {
+                var passed = item.MeetsRoceCriteria && item.MeetsScoreCriteria;
+                <tr class="@(passed ? "passed-row" : "failed-row")">
+                    <td><strong class="@(passed ? "badge-pass" : "badge-fail")">@(passed ? "✓ 通過" : "✗ 未過")</strong></td>
+                    <td><a asp-page="/Stocks/Details" asp-route-stockNo="@item.Stock.StockNo">@item.Stock.StockNo @item.Stock.Name</a></td>
+                    <td>@(item.Stock.Market == MarketKind.Listed ? "上市" : "上櫃")</td>
+                    <td>
+                        <strong class="@(item.MeetsRoceCriteria ? "text-green" : "text-red")">
+                            @(item.AnnualRoce?.ToString("N2") ?? "—")%
+                        </strong>
+                    </td>
+                    <td>@(item.QuarterRoce?.ToString("N2") ?? "—")%</td>
+                    <td>@(item.LatestAnnual?.FiscalYear.ToString() ?? "—")</td>
+                    <td>@(item.LatestQuarter is not null ? $"{item.LatestQuarter.FiscalYear} {item.LatestQuarter.Period}" : "—")</td>
+                    <td class="@(item.MeetsScoreCriteria ? "text-green" : "")">@(item.Score?.ToString("N1") ?? "—")</td>
+                    <td>@(item.CoveragePercent?.ToString("N0") ?? "—")%</td>
+                    <td><small>@(string.IsNullOrWhiteSpace(item.Source) ? "—" : item.Source)</small></td>
+                    <td><small>@(string.IsNullOrWhiteSpace(item.Note) ? "—" : item.Note)</small></td>
+                    <td>
+                        @if (passed)
+                        {
+                            <form method="post" asp-page="/Stocks/Search" asp-page-handler="Add" style="display:inline">
+                                <input type="hidden" name="stockNo" value="@item.Stock.StockNo" />
+                                <button class="button compact" type="submit">加入觀察</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.Result.PassedCount == 0)
+    {
+        <section class="empty-state compact">
+            <div class="empty-icon">✗</div>
+            <h2>目前沒有股票通過門檻</h2>
+            <p>請查看上方各列的年度 ROCE、品質分數與覆蓋率，判斷是門檻未達，還是本機資料不足。</p>
+            @if (Model.UnverifiedCount > 0)
+            {
+                <p><strong>公司清單未找到的 @Model.UnverifiedCount 檔</strong>不會出現在明細表；可先更新公司清單，再重新比對。</p>
+            }
+        </section>
+    }
+}
+
+<style>
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; }
+.form-group span { display: block; margin-bottom: 8px; font-weight: 600; }
+.form-group textarea { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 8px; font-family: monospace; font-size: 13px; line-height: 1.6; resize: vertical; }
+.form-group code { background: #f6f8f5; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+.passed-row { background: #f0fdf4; }
+.failed-row { background: #fef2f2; }
+.badge-pass { color: #15803d; background: #dcfce7; padding: 4px 8px; border-radius: 4px; font-size: 11px; }
+.badge-fail { color: #b91c1c; background: #fee2e2; padding: 4px 8px; border-radius: 4px; font-size: 11px; }
+.text-green { color: #15803d; }
+.text-red { color: #b91c1c; }
+.summary-strip .passed { color: #15803d; }
+</style>

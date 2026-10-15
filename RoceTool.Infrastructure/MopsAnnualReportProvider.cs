@@ -23,7 +23,7 @@ public sealed partial class MopsAnnualReportProvider(HttpClient httpClient) : IF
         foreach (var reportId in new[] { "C", "A" })
         {
             var url = $"{BaseUrl}?step=1&CO_ID={Uri.EscapeDataString(stockNo)}&SYEAR={fiscalYear}&SSEASON={quarter}&REPORT_ID={reportId}";
-            using var response = await httpClient.GetAsync(url, cancellationToken);
+            using var response = await GetWithRetryAsync(url, cancellationToken);
             if (!response.IsSuccessStatusCode) continue;
             var html = await response.Content.ReadAsStringAsync(cancellationToken);
             var statement = ParsePeriod(html, stockNo, fiscalYear, quarter, annual, url);
@@ -42,6 +42,10 @@ public sealed partial class MopsAnnualReportProvider(HttpClient httpClient) : IF
         var end = endDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
         var duration = $"From{fiscalYear}0101To{end}";
         var instant = $"AsOf{end}";
+        var weightedAverageShares = Extract(html, duration, false,
+            "ifrs-full:WeightedAverageNumberOfOrdinarySharesOutstandingBasic",
+            "ifrs-full:WeightedAverageNumberOfOrdinarySharesOutstandingDiluted",
+            "tifrs-notes:WeightedAverageNumberOfOrdinarySharesOutstandingBasic");
 
         var statement = new FinancialStatement
         {
@@ -56,17 +60,35 @@ public sealed partial class MopsAnnualReportProvider(HttpClient httpClient) : IF
                 "ifrs-full:RevenueFromInterest", "ifrs-full:InterestIncome",
                 "ifrs-full:InterestRevenueCalculatedUsingEffectiveInterestMethod", "tifrs-bsci-ci:InterestIncome"),
             NetIncome = Extract(html, duration, true, "ifrs-full:ProfitLoss"),
+            ParentNetIncome = Extract(html, duration, true, "ifrs-full:ProfitLossAttributableToOwnersOfParent"),
+            ParentEquity = Extract(html, instant, true, "ifrs-full:EquityAttributableToOwnersOfParent"),
+            ReportBasis = sourceUrl.Contains("REPORT_ID=C", StringComparison.OrdinalIgnoreCase) ? "Consolidated"
+                : sourceUrl.Contains("REPORT_ID=A", StringComparison.OrdinalIgnoreCase) ? "Individual" : "",
             CurrentAssets = Extract(html, instant, true, "ifrs-full:CurrentAssets"),
             TotalAssets = Extract(html, instant, true, "ifrs-full:Assets"),
             CurrentLiabilities = Extract(html, instant, true, "ifrs-full:CurrentLiabilities"),
             TotalLiabilities = Extract(html, instant, true, "ifrs-full:Liabilities"),
             TotalEquity = Extract(html, instant, true, "ifrs-full:Equity"),
             Eps = Extract(html, duration, false, "ifrs-full:BasicEarningsLossPerShare"),
+            OperatingCashFlow = Extract(html, duration, true,
+                "ifrs-full:CashFlowsFromUsedInOperatingActivities",
+                "tifrs-SCF:CashFlowsFromUsedInOperatingActivities"),
+            CapexPpe = Extract(html, duration, true,
+                "ifrs-full:PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities"),
+            CapexIntangibles = Extract(html, duration, true,
+                "ifrs-full:PurchaseOfIntangibleAssetsClassifiedAsInvestingActivities"),
+            WeightedAverageShares = weightedAverageShares,
+            WeightedAverageSharesSource = weightedAverageShares is null ? "" : "MOPS iXBRL 加權平均股數",
             SourceKind = SourceKind.Mops,
             SourceName = "MOPS iXBRL",
             SourceUrl = sourceUrl,
             FetchedAt = DateTime.UtcNow
         };
+        if (statement.WeightedAverageShares is null && EstimateWeightedAverageShares(statement) is decimal estimatedShares)
+        {
+            statement.WeightedAverageShares = estimatedShares;
+            statement.WeightedAverageSharesSource = "NetIncome/EPS 推估";
+        }
 
         return statement.TotalAssets is null && statement.OperatingIncome is null ? null : statement;
     }
@@ -88,6 +110,29 @@ public sealed partial class MopsAnnualReportProvider(HttpClient httpClient) : IF
             return value * Pow10(scale) / 1000m;
         }
         return null;
+    }
+
+    private async Task<HttpResponseMessage> GetWithRetryAsync(string url, CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                var response = await httpClient.GetAsync(url, cancellationToken);
+                if ((int)response.StatusCode < 500 && (int)response.StatusCode != 429 || attempt == 1) return response;
+                response.Dispose();
+            }
+            catch (Exception ex) when (attempt == 0 && !cancellationToken.IsCancellationRequested &&
+                ex is HttpRequestException or TaskCanceledException) { }
+            await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+        }
+    }
+
+    private static decimal? EstimateWeightedAverageShares(FinancialStatement statement)
+    {
+        if (statement.NetIncome is null || statement.Eps is null or 0) return null;
+        var estimated = statement.NetIncome.Value * 1000m / statement.Eps.Value;
+        return estimated <= 0 ? null : estimated;
     }
 
     private static string Attribute(string attrs, string name)

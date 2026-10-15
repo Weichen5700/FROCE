@@ -1,0 +1,167 @@
+@page
+@model FinanceModel
+@{
+    ViewData["Title"] = "金融專區";
+    var columns = new[]
+    {
+        (Key: "stock", Label: "代號／公司"),
+        (Key: "market", Label: "市場"),
+        (Key: "price", Label: "收盤股價（元）"),
+        (Key: "cash", Label: "現金股利（元／股）"),
+        (Key: "stockdividend", Label: "股票股利（元／股）"),
+        (Key: "yield", Label: "現金殖利率（%）"),
+        (Key: "target", Label: "5% 現金參考價（元）"),
+        (Key: "eps", Label: $"{Model.ReferenceYear} EPS（元）"),
+        (Key: "payout", Label: "現金盈餘配發率（%）"),
+        (Key: "roe", Label: "簡化 ROE（%）"),
+        (Key: "profit", Label: "本期淨利（億元）"),
+        (Key: "coverage", Label: "EPS 資料年數")
+    };
+}
+<section class="page-heading">
+    <span class="eyebrow">FINANCIAL SECTOR</span>
+    <h1>金融股比較</h1>
+    <p>一起看股價、配息與 5% 現金殖利率參考，再點公司比較七年資料及獲利組成。</p>
+</section>
+
+<section class="summary-strip screen-summary finance-summary">
+    <div><span>公司名單</span><strong>@Model.CompanyCount.ToString("N0")</strong><small>符合目前搜尋條件</small></div>
+    <div><span>@Model.ReferenceYear 年 EPS 可比較</span><strong>@Model.ComparableEpsCount.ToString("N0")</strong><small>有同年度 EPS 資料</small></div>
+    <div><span>七年 EPS 齊全</span><strong>@Model.CompleteHistoryCount.ToString("N0")</strong><small>@Model.HistoryYears.Last()–@Model.ReferenceYear 各年皆有 EPS</small></div>
+    <div><span>現金殖利率達 5%</span><strong>@Model.TargetCount.ToString("N0")</strong><small>搜尋範圍內；使用最近 7 日內收盤</small></div>
+</section>
+
+<section class="panel finance-research-entry">
+    <div><span class="eyebrow">FINANCIAL RESEARCH</span><h2>從配息往下看獲利與資本</h2>
+        <p class="hint">研究試點逐筆列出業務指標、獲利品質與資本證據。七年年度資料與兩年研究資料的覆蓋不同；尚未完成連續八季及完整可配息現金勾稽。</p></div>
+    @if (Model.ResearchError is string researchError) { <p role="alert">@researchError</p> }
+    <div class="finance-research-links">
+    @foreach (var profile in Model.ResearchCompanies.OrderBy(x => x.StockNo))
+    {
+        <a class="button" data-no-ajax asp-page="/Finance/Details" asp-route-stockNo="@profile.StockNo" asp-fragment="research-summary"
+           asp-route-query="@Model.Query" asp-route-sort="@Model.Sort" asp-route-direction="@Model.Direction" asp-route-onlyTarget="@Model.OnlyTarget">@profile.Name · @profile.AnnualYears 年研究</a>
+    }
+    </div>
+</section>
+
+<form method="get" class="panel filter-panel">
+    <input type="hidden" name="Sort" value="@Model.Sort" />
+    <input type="hidden" name="Direction" value="@Model.Direction" />
+    <div class="finance-search">
+        <label><span>搜尋代號或公司</span><input asp-for="Query" placeholder="例如 2881、富邦金" /></label>
+        <label class="finance-target-filter"><input asp-for="OnlyTarget" /> 只看現金殖利率達 5%</label>
+        <button class="button button-primary" type="submit">搜尋</button>
+        @if (!string.IsNullOrWhiteSpace(Model.Query))
+        {
+            <a class="button" asp-page="/Finance" asp-route-sort="@Model.Sort" asp-route-direction="@Model.Direction" asp-route-onlyTarget="@Model.OnlyTarget">清除搜尋</a>
+        }
+    </div>
+</form>
+<form method="post" asp-page-handler="Quotes" class="finance-quote-refresh" data-progress-form="refresh">
+    <input type="hidden" asp-for="Query" /><input type="hidden" asp-for="Sort" /><input type="hidden" asp-for="Direction" /><input type="hidden" asp-for="OnlyTarget" />
+    <button class="button" type="submit">更新官方股價</button>
+    <span class="hint">收盤資料，非盤中即時報價；交易日期與來源逐家公司標示。</span>
+</form>
+
+@if (Model.Items.Count == 0)
+{
+    <section class="empty-state compact">
+        <h2>@(Model.OnlyTarget ? "目前沒有符合 5% 現金條件的公司" : "沒有符合的金融業公司")</h2>
+        <p>可調整搜尋或取消 5% 篩選。缺股利、缺股價／交易日，或價格超過 7 日者不納入 5% 篩選。</p>
+    </section>
+}
+else
+{
+    <section class="panel finance-list-panel">
+        <div class="panel-heading">
+            <div><span class="eyebrow">COMPANY OVERVIEW</span><h2>金融公司摘要</h2></div>
+            <span class="source-pill">@Model.ReferenceYear 盈餘年度股利 × 最新可用收盤</span>
+        </div>
+        <p class="hint">點表頭切換升冪／降冪；缺資料的公司排在最後。缺少 @Model.ReferenceYear 年報時顯示「—」，可點公司查看已收錄的其他年度。</p>
+        <div class="table-wrap finance-list-table" tabindex="0" role="region" aria-label="可排序金融公司摘要">
+            <table>
+                <thead>
+                    <tr>
+                        @foreach (var column in columns)
+                        {
+                            <th scope="col" aria-sort="@Model.AriaSort(column.Key)">
+                                <a class="finance-sort-link @(Model.Sort == column.Key ? "active" : "")"
+                                   asp-page="/Finance" asp-route-query="@Model.Query" asp-route-sort="@column.Key"
+                                   asp-route-direction="@Model.NextDirection(column.Key)" asp-route-onlyTarget="@Model.OnlyTarget"
+                                   aria-label="@($"依{column.Label}{(Model.NextDirection(column.Key) == "asc" ? "升冪" : "降冪")}排序")">
+                                    @column.Label <span aria-hidden="true">@Model.SortIndicator(column.Key)</span>
+                                </a>
+                            </th>
+                        }
+                        <th scope="col">年度資料狀態</th>
+                        <th scope="col">公司詳情</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    var statement = item.StatementFor(Model.ReferenceYear);
+                    var roe = item.RoeFor(Model.ReferenceYear);
+                    var dividend = item.DividendFor(Model.ReferenceYear);
+                    <tr>
+                        <td class="finance-company-cell">
+                            <a asp-page="/Finance/Details" asp-route-stockNo="@item.Stock.StockNo" asp-route-year="@Model.ReferenceYear"
+                               asp-route-query="@Model.Query" asp-route-sort="@Model.Sort" asp-route-direction="@Model.Direction" asp-route-onlyTarget="@Model.OnlyTarget">
+                                <strong class="finance-stock-no">@item.Stock.StockNo</strong>
+                                <span class="finance-company-name">@item.Stock.Name</span>
+                            </a>
+                        </td>
+                        <td><span class="finance-market-tag">@(item.Stock.Market == MarketKind.Listed ? "上市" : "上櫃")</span></td>
+                        <td class="finance-quote-cell">
+                            <strong>@(item.Stock.ClosePrice is > 0 ? FinancePageData.Price(item.Stock.ClosePrice) : "—")</strong>
+                            <small>@(item.QuoteTradingDate?.ToString("yyyy-MM-dd") ?? "交易日未標示")</small>
+                            @if (FinancePageData.QuoteSourceLink(item.Stock) is string quoteUrl)
+                            { <small><a href="@quoteUrl" target="_blank" rel="noopener noreferrer">@(item.Stock.Market == MarketKind.Listed ? "TWSE" : "TPEx") ↗</a></small> }
+                        </td>
+                        <td class="finance-primary-value">@(dividend?.CashPerShare?.ToString("0.###") ?? "—")
+                            @if (dividend?.DecisionStatus.Contains("擬議") == true) { <small class="finance-eps-meta">含擬議</small> }
+                        </td>
+                        <td>@(dividend?.StockPerShare?.ToString("0.###") ?? "—")</td>
+                        <td class="finance-yield-cell">
+                            <strong>@(item.CashYield(Model.ReferenceYear)?.ToString("N2") ?? "—")</strong>
+                            @if (item.MeetsCashTarget(Model.ReferenceYear)) { <small class="finance-target-badge">達 5%</small> }
+                            else if (item.IsOldQuote()) { <small class="finance-eps-meta">舊收盤參考</small> }
+                            @if (dividend?.DecisionStatus.Contains("擬議") == true) { <small class="finance-eps-meta">含擬議股利</small> }
+                        </td>
+                        <td>@FinancePageData.Price(item.CashTargetPrice(Model.ReferenceYear))</td>
+                        <td class="finance-primary-value">@(statement?.Eps?.ToString("N2") ?? "—")</td>
+                        <td>@(item.CashPayoutRatio(Model.ReferenceYear)?.ToString("N1") ?? "—")</td>
+                        <td>@(roe?.ToString("N2") ?? "—")</td>
+                        <td>@FinancePageData.Money(statement?.NetIncome)</td>
+                        <td><strong>@item.EpsYearCount(Model.HistoryYears)</strong><span class="finance-eps-meta"> / 7 年</span></td>
+                        <td class="finance-data-status">
+                            @if (statement is null)
+                            {
+                                <span>@(item.LatestStatement is null ? "尚無年報" : $"缺 {Model.ReferenceYear} 年報")</span>
+                                @if (item.LatestStatement is not null)
+                                {
+                                    <small>最新收錄 @item.LatestStatement.FiscalYear 年</small>
+                                }
+                            }
+                            else
+                            {
+                                <span>@(statement.Eps is null ? "EPS 缺漏" : FinancePageData.HasCoreSummary(statement) ? "核心欄位齊全" : "其他欄位缺漏")</span>
+                                <small>@FinancePageData.Basis(statement)</small>
+                            }
+                        </td>
+                        <td>
+                            <a asp-page="/Finance/Details" asp-route-stockNo="@item.Stock.StockNo" asp-route-year="@Model.ReferenceYear"
+                               asp-route-query="@Model.Query" asp-route-sort="@Model.Sort" asp-route-direction="@Model.Direction" asp-route-onlyTarget="@Model.OnlyTarget"
+                               aria-label="@($"查看{item.Stock.Name}歷年 EPS 與配息")">年度分析 →</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <p class="source-note">現金殖利率試算 = @Model.ReferenceYear 年普通股現金股利 ÷ 顯示收盤價 × 100%；5% 現金參考價 = 同筆現金股利 ÷ 0.05。門檻依未四捨五入數值判定；超過 7 日、日期未知或缺價者不納入篩選。此為假設配息維持的觀察條件，已除息年度的股利不代表現在買進仍能領取。</p>
+        <p class="source-note">現金股利包含盈餘及公積；股票股利另列。公司頁另有「現金＋股票配發面額」合計參考，未將股票當現金收入。現金盈餘配發率 = 盈餘發放現金 ÷ 同年 EPS，EPS ≤ 0 時不計算。MOPS 決議不等於已發放，日期與進度見公司頁。</p>
+        <p class="source-note">簡化 ROE = 本期淨利 ÷ 期末權益，未採平均權益；本期淨利可能含非控制權益，歸屬母公司淨利另列於公司頁。EPS 資料年數計算 @Model.HistoryYears.Last()–@Model.ReferenceYear 的收錄情況。</p>
+    </section>
+}
+<p class="hint">名單依官方產業代碼 17 篩選；點進公司查看資料不會自動加入觀察清單。</p>

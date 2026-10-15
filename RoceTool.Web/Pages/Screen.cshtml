@@ -16,6 +16,7 @@
         <label><span>最低 ROCE</span><div><input asp-for="MinRoce" type="number" step="0.1" /><b>%</b></div></label>
         <label><span>最低品質分數</span><div><input asp-for="MinScore" type="number" min="0" max="100" step="1" /><b>分</b></div></label>
         <label><span>最低資料覆蓋</span><div><input asp-for="MinCoverage" type="number" min="0" max="100" step="1" /><b>%</b></div></label>
+        <label><span>最低總資產（選填）</span><div><input asp-for="MinTotalAssets" type="number" min="0" step="10" placeholder="100" /><b>億元</b></div></label>
         <label><span>產業</span>
             <select asp-for="Industry">
                 <option value="">全部產業</option>
@@ -30,7 +31,7 @@
             </select>
         </label>        <label><span>完整年度</span>
             <select asp-for="Year">
-                <option value="">每家公司最新年度</option>
+                <option value="">自動選擇最新共同年度</option>
                 @foreach (var year in Model.Result.AvailableYears) { <option value="@year">@year</option> }
             </select>
         </label>
@@ -49,24 +50,26 @@
 </form>
 <p class="hint size-note">規模使用最新年度「資產總額－流動負債」，在同產業已分析公司中三等分；全市場掃描越完整，分組與排名越穩定。</p>
 
-<section class="panel scan-panel">
+<section class="panel scan-panel" data-scan-panel data-scan-status="@Model.Scan.Status">
     <div class="scan-copy">
         <div class="panel-heading">
             <div><span class="eyebrow">FULL MARKET SCAN</span><h2>全市場完整年度掃描</h2></div>
-            <span class="scan-status status-@Model.Scan.Status.ToString().ToLowerInvariant()">@ScreenModel.StatusLabel(Model.Scan.Status)</span>
+            <span class="scan-status status-@Model.Scan.Status.ToString().ToLowerInvariant()" data-scan-status-label>@ScreenModel.StatusLabel(Model.Scan.Status)</span>
         </div>
-        <p>逐檔取得 MOPS 最新完整年度，一次只送出一筆請求且每筆間隔一秒。第一次約需數十分鐘，可暫停、關閉並續跑。</p>
+        <p>逐檔取得 MOPS 完整年度；預設補齊最近 7 年，一次只送出一筆請求且每筆間隔一秒。第一次約需數小時，可暫停、關閉並續跑。</p>
     </div>
     <div class="scan-progress">
         <div class="progress-head">
-            <strong>@Model.Scan.Completed.ToString("N0") / @Model.Scan.Total.ToString("N0")</strong>
-            <span>@Model.Scan.Percent.ToString("N1")%</span>
+            <strong data-scan-count>@Model.Scan.Completed.ToString("N0") / @Model.Scan.Total.ToString("N0")</strong>
+            <span data-scan-percent>@Model.Scan.Percent.ToString("N1")%</span>
         </div>
-        <div class="scan-track"><i style="width:@Model.Scan.Percent.ToString("0.##")%"></i></div>
+        <div class="scan-track"><i data-scan-progress-bar style="width:@Model.Scan.Percent.ToString("0.##")%"></i></div>
         <div class="scan-meta">
-            <span>成功 @Model.Scan.Success.ToString("N0")</span>
-            <span>未取得 @Model.Scan.Failed.ToString("N0")</span>
-            @if (!string.IsNullOrWhiteSpace(Model.Scan.CurrentStockNo)) { <span>正在處理 @Model.Scan.CurrentStockNo</span> }
+            <span data-scan-range>範圍 @(Model.Scan.RangeEndFiscalYear?.ToString() ?? Model.Scan.FiscalYear.ToString()) 至 @(Model.Scan.RangeStartFiscalYear?.ToString() ?? Model.Scan.FiscalYear.ToString())</span>
+            <span>目前年度 <span data-scan-year>@Model.Scan.FiscalYear</span></span>
+            <span>成功 <span data-scan-success>@Model.Scan.Success.ToString("N0")</span></span>
+            <span>未取得 <span data-scan-failed>@Model.Scan.Failed.ToString("N0")</span></span>
+            <span data-scan-current-stock-wrap hidden="@(string.IsNullOrWhiteSpace(Model.Scan.CurrentStockNo))">正在處理 <span data-scan-current-stock>@Model.Scan.CurrentStockNo</span></span>
         </div>
     </div>
     <div class="scan-actions">
@@ -74,7 +77,7 @@
         {
             <form method="post" asp-page-handler="PauseScan">
                 <input type="hidden" asp-for="MinRoce" /><input type="hidden" asp-for="MinScore" />
-                <input type="hidden" asp-for="MinCoverage" /><input type="hidden" asp-for="Year" /><input type="hidden" asp-for="Industry" /><input type="hidden" asp-for="SizeBand" /><input type="hidden" asp-for="Sort" />
+                <input type="hidden" asp-for="MinCoverage" /><input type="hidden" asp-for="MinTotalAssets" /><input type="hidden" asp-for="Year" /><input type="hidden" asp-for="Industry" /><input type="hidden" asp-for="SizeBand" /><input type="hidden" asp-for="Sort" />
                 <button class="button" type="submit">暫停掃描</button>
             </form>
         }
@@ -82,8 +85,9 @@
         {
             <form method="post" asp-page-handler="StartScan" class="scan-start">
                 <input type="hidden" asp-for="MinRoce" /><input type="hidden" asp-for="MinScore" />
-                <input type="hidden" asp-for="MinCoverage" /><input type="hidden" asp-for="Year" /><input type="hidden" asp-for="Industry" /><input type="hidden" asp-for="SizeBand" /><input type="hidden" asp-for="Sort" />
-                <label><span>掃描年度</span><input asp-for="ScanYear" type="number" min="1990" max="2200" /></label>
+                <input type="hidden" asp-for="MinCoverage" /><input type="hidden" asp-for="MinTotalAssets" /><input type="hidden" asp-for="Year" /><input type="hidden" asp-for="Industry" /><input type="hidden" asp-for="SizeBand" /><input type="hidden" asp-for="Sort" />
+                <label><span>最新年度</span><input asp-for="ScanYear" type="number" min="1990" max="2200" /></label>
+                <label><span>連續年數</span><input asp-for="ScanYears" type="number" min="1" max="20" /></label>
                 <button class="button button-primary" type="submit">@(Model.Scan.Status == MarketScanStatus.Paused ? "繼續掃描" : "開始／檢查掃描")</button>
             </form>
         }
@@ -92,8 +96,8 @@
 
 <section class="summary-strip screen-summary">
     <div><span>符合條件</span><strong>@Model.Items.Count</strong><small>家公司</small></div>
-    <div><span>已有完整年度資料</span><strong>@Model.Result.AnalyzedStocks</strong><small>／ @Model.Result.EligibleStocks 家一般業公司</small></div>
-    <div><span>市場分析覆蓋</span><strong>@analyzedRate.ToString("N1")%</strong><small>清單完整度，不是評分覆蓋率</small></div>
+    <div><span>@(Model.Year is int selectedYear ? $"{selectedYear} 年度可分析公司" : "可分析公司")</span><strong>@Model.Result.AnalyzedStocks</strong><small>／ @Model.Result.EligibleStocks 家一般業公司</small></div>
+    <div><span>共同年度資料覆蓋</span><strong>@analyzedRate.ToString("N1")%</strong><small>該年度有可計算 ROCE 與評分的公司比例；不代表個別公司的評分覆蓋率</small></div>
 </section>
 
 @if (Model.Items.Count == 0)
@@ -113,7 +117,7 @@ else
 {
     <div class="table-wrap screen-table">
         <table>
-            <thead><tr><th>排名</th><th>股票</th><th>市場</th><th>產業</th><th>規模</th><th>年度</th><th>ROCE</th><th>EPS</th><th>收盤價</th><th>本益比</th><th>ROE</th><th>同業 ROCE</th><th>同規模 ROCE</th><th>品質分數</th><th>資料覆蓋</th><th>來源</th><th></th></tr></thead>
+            <thead><tr><th>排名</th><th>股票</th><th>市場</th><th>產業</th><th>規模</th><th>年度</th><th>ROCE</th><th>EPS</th><th>收盤價</th><th>官方本益比</th><th>ROE</th><th>同業 ROCE</th><th>同規模 ROCE</th><th>品質分數</th><th>資料覆蓋</th><th>來源</th><th></th></tr></thead>
             <tbody>
             @for (var i = 0; i < Model.Items.Count; i++)
             {
@@ -124,7 +128,7 @@ else
                     <td><strong>@item.Stock.StockNo</strong> @item.Stock.Name</td>
                     <td>@(item.Stock.Market == MarketKind.Listed ? "上市" : "上櫃")</td>
                     <td>@(string.IsNullOrWhiteSpace(item.Stock.IndustryName) ? "未分類" : item.Stock.IndustryName)</td>
-                    <td><strong>@CompanySizeBandLabels.Label(item.SizeBand)</strong><small class="peer-median">投入資本 @(item.CapitalEmployed / 100000m).ToString("N1") 億</small></td>
+                    <td><strong>@CompanySizeBandLabels.Label(item.SizeBand)</strong><small class="peer-median">投入資本 @((item.CapitalEmployed / 100000m).ToString("N1")) 億</small></td>
                     <td>@item.Statement.FiscalYear</td>
                     <td><strong class="positive">@item.Roce.ToString("N2")%</strong></td>
                     <td>@(item.Statement.Eps?.ToString("N2") ?? "—")</td>
@@ -141,10 +145,6 @@ else
             </tbody>
         </table>
     </div>
-}
-@if (Model.Scan.Status == MarketScanStatus.Running)
-{
-    <script>window.setTimeout(() => window.location.reload(), 5000);</script>
 }
 
 

@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using RoceTool.Core;
 
 namespace RoceTool.Infrastructure;
@@ -6,13 +8,25 @@ namespace RoceTool.Infrastructure;
 public sealed class StockAnalysisService(
     RoceDbContext db,
     IOfficialDataProvider officialProvider,
-    IFinancialDataProvider annualProvider) : IStockAnalysisService
+    IFinancialDataProvider annualProvider,
+    IServiceScopeFactory? scopeFactory = null,
+    ILogger<StockAnalysisService>? logger = null) : IStockAnalysisService
 {
+    private static int catalogRefreshInProgress;
+
     public async Task EnsureCatalogAsync(bool force = false, CancellationToken cancellationToken = default)
     {
         var newest = await db.Stocks.Select(x => (DateTime?)x.UpdatedAt).MaxAsync(cancellationToken);
         var needsIndustryBackfill = await db.Stocks.AnyAsync(x => x.IndustryName == "", cancellationToken);
-        if (!force && !needsIndustryBackfill && newest is not null && newest > DateTime.UtcNow.AddDays(-1)) return;
+        if (!force && newest is not null)
+        {
+            if (!needsIndustryBackfill && newest > DateTime.UtcNow.AddDays(-1)) return;
+            if (scopeFactory is not null)
+            {
+                QueueCatalogRefresh(scopeFactory, logger);
+                return;
+            }
+        }
 
         try
         {
@@ -60,6 +74,29 @@ public sealed class StockAnalysisService(
         }
     }
 
+    private static void QueueCatalogRefresh(IServiceScopeFactory scopes, ILogger<StockAnalysisService>? logger)
+    {
+        if (Interlocked.CompareExchange(ref catalogRefreshInProgress, 1, 0) != 0) return;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await using var scope = scopes.CreateAsyncScope();
+                var service = scope.ServiceProvider.GetRequiredService<IStockAnalysisService>();
+                await service.EnsureCatalogAsync(force: true, CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                logger?.LogError(exception, "背景更新官方公司清單失敗");
+            }
+            finally
+            {
+                Interlocked.Exchange(ref catalogRefreshInProgress, 0);
+            }
+        });
+    }
+
     public async Task<IReadOnlyList<Stock>> SearchAsync(string? query, CancellationToken cancellationToken = default)
     {
         await EnsureCatalogAsync(cancellationToken: cancellationToken);
@@ -91,10 +128,15 @@ public sealed class StockAnalysisService(
         var all = await db.FinancialStatements.AsNoTracking().Where(x => x.StockNo == stockNo)
             .OrderByDescending(x => x.FiscalYear).ThenByDescending(x => x.FetchedAt).ToListAsync(cancellationToken);
         var annual = all.Where(x => x.IsAnnual).GroupBy(x => x.FiscalYear)
-            .Select(ChooseSource).OrderByDescending(x => x.FiscalYear).ToList();
+            .Select(group => ChooseSource(group)).OrderByDescending(x => x.FiscalYear).ToList();
         var selected = year is null ? annual.FirstOrDefault() : annual.FirstOrDefault(x => x.FiscalYear == year);
-        var quarter = all.Where(x => !x.IsAnnual).OrderByDescending(x => x.FiscalYear)
-            .ThenByDescending(x => x.Period).FirstOrDefault();
+        var quarters = all.Where(x => !x.IsAnnual)
+            .GroupBy(x => new { x.FiscalYear, x.Period })
+            .Select(group => ChooseSource(group))
+            .OrderByDescending(x => x.FiscalYear)
+            .ThenByDescending(x => x.Period)
+            .ToList();
+        var quarter = quarters.FirstOrDefault();
         var template = await GetDefaultTemplateAsync(cancellationToken);
         var score = stock.StatementKind == StatementKind.General && selected is not null
             ? ScoreEngine.Calculate(selected, template.Rules) : null;
@@ -108,6 +150,7 @@ public sealed class StockAnalysisService(
             Stock = stock,
             SelectedAnnual = selected,
             LatestQuarter = quarter,
+            QuarterHistory = quarters,
             AnnualHistory = annual,
             Score = score,
             LatestQuarterScore = latestQuarterScore,
@@ -122,25 +165,31 @@ public sealed class StockAnalysisService(
         int? year = null,
         string? industryName = null,
         CompanySizeBand? sizeBand = null,
+        decimal? minTotalAssets = null,
         CancellationToken cancellationToken = default)
     {
         await EnsureCatalogAsync(cancellationToken: cancellationToken);
         var stocks = await db.Stocks.AsNoTracking()
             .Where(x => x.StatementKind == StatementKind.General && x.IsSupported)
             .ToDictionaryAsync(x => x.StockNo, cancellationToken);
-        var statements = await db.FinancialStatements.AsNoTracking().Where(x => x.IsAnnual).ToListAsync(cancellationToken);
+        var statements = (await db.FinancialStatements.AsNoTracking()
+                .Where(x => x.IsAnnual)
+                .ToListAsync(cancellationToken))
+            .Where(x => stocks.ContainsKey(x.StockNo))
+            .ToList();
         var availableYears = statements.Select(x => x.FiscalYear).Distinct().OrderByDescending(x => x).ToList();
+        int? selectedYear = year ?? availableYears.FirstOrDefault();
+        if (selectedYear == 0) selectedYear = null;
         var availableIndustries = stocks.Values.Select(IndustryLabel)
             .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
         var template = await GetDefaultTemplateAsync(cancellationToken);
         var evaluated = new List<EvaluatedCompany>();
 
-        foreach (var stockGroup in statements.Where(x => stocks.ContainsKey(x.StockNo)).GroupBy(x => x.StockNo))
+        foreach (var stockGroup in statements.GroupBy(x => x.StockNo))
         {
-            var candidates = year is null
-                ? stockGroup.Where(x => x.FiscalYear == stockGroup.Max(s => s.FiscalYear))
-                : stockGroup.Where(x => x.FiscalYear == year.Value);
-            var statement = candidates.GroupBy(x => x.FiscalYear).Select(ChooseSource).FirstOrDefault();
+            var statement = selectedYear is int commonYear
+                ? stockGroup.Where(x => x.FiscalYear == commonYear).GroupBy(x => x.FiscalYear).Select(ChooseSource).FirstOrDefault()
+                : null;
             if (statement is null) continue;
             var roce = FinancialCalculator.CalculateRoce(statement);
             var score = ScoreEngine.Calculate(statement, template.Rules);
@@ -163,6 +212,7 @@ public sealed class StockAnalysisService(
             if (!string.IsNullOrWhiteSpace(industryName) && !string.Equals(label, industryName, StringComparison.OrdinalIgnoreCase)) continue;
             if (sizeBand is not null && band != sizeBand.Value) continue;
             if (candidate.Roce < minRoce || candidate.Score < minScore || candidate.Coverage < minCoverage) continue;
+            if (minTotalAssets is not null && (candidate.Statement.TotalAssets is null || candidate.Statement.TotalAssets < minTotalAssets.Value * 100_000m)) continue;
 
             var peers = peerGroups[label];
             var industryRank = peers.Count(x => x.Roce > candidate.Roce) + 1;
@@ -177,7 +227,10 @@ public sealed class StockAnalysisService(
 
         return new StockScreenResult(
             items.OrderByDescending(x => x.Score).ThenByDescending(x => x.Roce).ToList(),
-            evaluated.Count, stocks.Count, availableYears, availableIndustries);
+            evaluated.Count, stocks.Count, availableYears, availableIndustries)
+        {
+            SelectedYear = selectedYear
+        };
     }
 
     public async Task AddWatchlistAsync(string stockNo, CancellationToken cancellationToken = default)
@@ -211,12 +264,17 @@ public sealed class StockAnalysisService(
 
         var count = 0;
         var errors = new List<string>();
-        for (var year = DateTime.Today.Year - 1; year >= DateTime.Today.Year - 5; year--)
+        for (var year = DateTime.Today.Year - 1; year >= DateTime.Today.Year - 7; year--)
         {
             var existing = await db.FinancialStatements.FirstOrDefaultAsync(x =>
                 x.StockNo == stockNo && x.FiscalYear == year && x.IsAnnual && x.SourceKind == SourceKind.Mops,
                 cancellationToken);
-            if (existing is not null && !force && existing.InterestIncome is not null) { count++; continue; }
+            if (existing is not null && !force && existing.InterestIncome is not null &&
+                existing.OperatingCashFlow is not null && existing.CapexPpe is not null)
+            {
+                count++;
+                continue;
+            }
 
             try
             {
@@ -238,15 +296,27 @@ public sealed class StockAnalysisService(
             .OrderByDescending(x => x.FiscalYear).ThenByDescending(x => x.Period).FirstOrDefaultAsync(cancellationToken);
         if (latestQuarter is not null)
         {
-            var mopsQuarter = await db.FinancialStatements.FirstOrDefaultAsync(x =>
-                x.StockNo == stockNo && x.FiscalYear == latestQuarter.FiscalYear && x.Period == latestQuarter.Period &&
-                x.SourceKind == SourceKind.Mops, cancellationToken);
-            if (force || mopsQuarter?.InterestIncome is null)
+            var latestQuarterNumber = latestQuarter.Period.Length > 1 &&
+                int.TryParse(latestQuarter.Period[1].ToString(), out var parsedQuarter) ? parsedQuarter : 0;
+            var quarterRequests = new List<(int FiscalYear, int Quarter)>();
+            if (latestQuarterNumber is >= 1 and <= 3)
             {
+                quarterRequests.AddRange(Enumerable.Range(1, latestQuarterNumber)
+                    .Select(quarter => (latestQuarter.FiscalYear, quarter)));
+                quarterRequests.AddRange(Enumerable.Range(1, 3)
+                    .Select(quarter => (latestQuarter.FiscalYear - 1, quarter)));
+            }
+
+            foreach (var request in quarterRequests.Distinct())
+            {
+                var mopsQuarter = await db.FinancialStatements.FirstOrDefaultAsync(x =>
+                    x.StockNo == stockNo && x.FiscalYear == request.FiscalYear && x.Period == $"Q{request.Quarter}YTD" &&
+                    x.SourceKind == SourceKind.Mops, cancellationToken);
+                if (!force && mopsQuarter?.Eps is not null && mopsQuarter.InterestIncome is not null) continue;
+
                 try
                 {
-                    var quarterNumber = int.Parse(latestQuarter.Period[1].ToString());
-                    var statement = await annualProvider.FetchQuarterAsync(stockNo, latestQuarter.FiscalYear, quarterNumber, cancellationToken);
+                    var statement = await annualProvider.FetchQuarterAsync(stockNo, request.FiscalYear, request.Quarter, cancellationToken);
                     if (statement is not null)
                     {
                         await UpsertStatementAsync(statement, cancellationToken);
@@ -255,8 +325,9 @@ public sealed class StockAnalysisService(
                 }
                 catch (Exception ex)
                 {
-                    errors.Add($"{latestQuarter.Period}: {ex.Message}");
-                    db.DataErrors.Add(new DataError { StockNo = stockNo, Provider = "MOPS iXBRL", Message = $"{latestQuarter.Period}: {ex.Message}" });
+                    var period = $"{request.FiscalYear} Q{request.Quarter}YTD";
+                    errors.Add($"{period}: {ex.Message}");
+                    db.DataErrors.Add(new DataError { StockNo = stockNo, Provider = "MOPS iXBRL", Message = $"{period}: {ex.Message}" });
                     await db.SaveChangesAsync(cancellationToken);
                 }
             }
@@ -387,15 +458,167 @@ public sealed class StockAnalysisService(
         existing.TotalLiabilities = incoming.TotalLiabilities;
         existing.TotalEquity = incoming.TotalEquity;
         existing.Eps = incoming.Eps;
+        existing.OperatingCashFlow = incoming.OperatingCashFlow;
+        existing.CapexPpe = incoming.CapexPpe;
+        existing.CapexIntangibles = incoming.CapexIntangibles;
+        existing.WeightedAverageShares = incoming.WeightedAverageShares;
+        existing.WeightedAverageSharesSource = incoming.WeightedAverageSharesSource;
         existing.SourceKind = incoming.SourceKind;
         existing.SourceUrl = incoming.SourceUrl;
         existing.FetchedAt = incoming.FetchedAt;
     }
 
-    private static FinancialStatement ChooseSource(IGrouping<int, FinancialStatement> group) =>
+    private static FinancialStatement ChooseSource(IEnumerable<FinancialStatement> group) =>
         group.OrderByDescending(x => x.IsPreferred)
-            .ThenBy(x => x.SourceKind == SourceKind.Mops ? 0 : x.SourceKind == SourceKind.Csv ? 1 : 2)
+            .ThenByDescending(HasRoceFields)
+            .ThenByDescending(HasCashFlowFields)
+            .ThenBy(SourcePriority)
             .ThenByDescending(x => x.FetchedAt).First();
+
+    private static bool HasRoceFields(FinancialStatement statement) =>
+        statement.OperatingIncome is not null &&
+        statement.TotalAssets is not null &&
+        statement.CurrentLiabilities is not null;
+
+    private static bool HasCashFlowFields(FinancialStatement statement) =>
+        statement.OperatingCashFlow is not null && statement.CapexPpe is not null;
+
+    private static int SourcePriority(FinancialStatement statement) => statement.SourceKind switch
+    {
+        SourceKind.Mops => 0,
+        SourceKind.FinMind => 1,
+        SourceKind.Csv => 2,
+        SourceKind.Twse => 3,
+        SourceKind.Tpex => 3,
+        _ => 9
+    };
+
+    public async Task<DiscoveryResult> DiscoverAsync(DiscoverySettings settings, CancellationToken cancellationToken = default)
+    {
+        var firstYear = settings.LatestYear - settings.Years + 1;
+
+        var stocks = await db.Stocks.AsNoTracking()
+            .Where(x => x.StatementKind == StatementKind.General && x.IsSupported)
+            .ToDictionaryAsync(x => x.StockNo, cancellationToken);
+
+        var statements = await db.FinancialStatements.AsNoTracking()
+            .Where(x => x.IsAnnual && x.FiscalYear >= firstYear && x.FiscalYear <= settings.LatestYear)
+            .ToListAsync(cancellationToken);
+
+        var template = await GetDefaultTemplateAsync(cancellationToken);
+        var items = new List<DiscoveryItem>();
+        var requestedYears = Enumerable.Range(firstYear, settings.Years).OrderByDescending(y => y).ToList();
+
+        foreach (var group in statements.Where(x => stocks.ContainsKey(x.StockNo)).GroupBy(x => x.StockNo))
+        {
+            var annualByYear = group.GroupBy(x => x.FiscalYear)
+                .ToDictionary(g => g.Key, g => ChooseSource(g));
+
+            var latest = annualByYear.OrderByDescending(x => x.Key).Select(x => x.Value).FirstOrDefault();
+            if (latest is null) continue;
+
+            var roce = FinancialCalculator.CalculateRoce(latest);
+            if (roce.RocePercent is null || roce.RocePercent < settings.MinRoce) continue;
+
+            var score = ScoreEngine.Calculate(latest, template.Rules);
+            if (settings.MinScore is decimal minScore && (score.TotalScore is null || score.TotalScore < minScore)) continue;
+
+            var yearlyRoce = requestedYears
+                .Select(year =>
+                {
+                    var stmt = annualByYear.TryGetValue(year, out var s) ? s : null;
+                    return (Year: year, Roce: stmt is null ? null : FinancialCalculator.CalculateRoce(stmt).RocePercent);
+                })
+                .ToList<(int Year, decimal? Roce)>();
+
+            items.Add(new DiscoveryItem(
+                stocks[group.Key],
+                latest,
+                roce.RocePercent.Value,
+                score.TotalScore,
+                score.CoveragePercent,
+                yearlyRoce,
+                annualByYear.Count,
+                settings.Years));
+        }
+
+        return new DiscoveryResult(
+            items.OrderByDescending(x => x.LatestRoce).ToList(),
+            stocks.Count,
+            items.Count,
+            settings.LatestYear,
+            settings.Years);
+    }
+
+    public async Task<ExternalTargetVerificationResult> VerifyExternalTargetsAsync(
+        ExternalTargetSettings settings,
+        CancellationToken cancellationToken = default)
+    {
+        await EnsureCatalogAsync(cancellationToken: cancellationToken);
+        var targetStockNos = settings.Targets.Select(t => t.StockNo).Distinct().ToList();
+        var stocks = await db.Stocks.AsNoTracking()
+            .Where(x => targetStockNos.Contains(x.StockNo))
+            .ToDictionaryAsync(x => x.StockNo, cancellationToken);
+
+        var annuals = await db.FinancialStatements.AsNoTracking()
+            .Where(x => x.IsAnnual && targetStockNos.Contains(x.StockNo))
+            .ToListAsync(cancellationToken);
+
+        var quarters = await db.FinancialStatements.AsNoTracking()
+            .Where(x => !x.IsAnnual && targetStockNos.Contains(x.StockNo))
+            .ToListAsync(cancellationToken);
+
+        var template = await GetDefaultTemplateAsync(cancellationToken);
+        var items = new List<ExternalTargetVerificationItem>();
+        var passedCount = 0;
+
+        foreach (var target in settings.Targets)
+        {
+            if (!stocks.TryGetValue(target.StockNo, out var stock)) continue;
+
+            var latestAnnual = annuals
+                .Where(x => x.StockNo == target.StockNo)
+                .GroupBy(x => x.FiscalYear)
+                .OrderByDescending(g => g.Key)
+                .Select(g => ChooseSource(g))
+                .FirstOrDefault();
+
+            var latestQuarter = quarters
+                .Where(x => x.StockNo == target.StockNo)
+                .OrderByDescending(x => x.FiscalYear)
+                .ThenByDescending(x => x.Period)
+                .FirstOrDefault();
+
+            var annualRoce = latestAnnual is not null ? FinancialCalculator.CalculateRoce(latestAnnual).RocePercent : null;
+            var quarterRoce = latestQuarter is not null ? FinancialCalculator.CalculateRoce(latestQuarter).RocePercent : null;
+            var score = latestAnnual is not null ? ScoreEngine.Calculate(latestAnnual, template.Rules) : null;
+
+            var meetsRoce = annualRoce is not null && annualRoce >= settings.MinRoce;
+            var meetsScore = settings.MinScore is null || (score?.TotalScore is not null && score.TotalScore >= settings.MinScore);
+
+            if (meetsRoce && meetsScore) passedCount++;
+
+            items.Add(new ExternalTargetVerificationItem(
+                stock,
+                latestAnnual,
+                latestQuarter,
+                annualRoce,
+                quarterRoce,
+                score?.TotalScore,
+                score?.CoveragePercent,
+                meetsRoce,
+                meetsScore,
+                target.Source,
+                target.Note));
+        }
+
+        return new ExternalTargetVerificationResult(
+            items,
+            settings.Targets.Count,
+            items.Count,
+            passedCount,
+            DateTime.UtcNow);
+    }
 }
 
 

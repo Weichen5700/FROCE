@@ -1,0 +1,53 @@
+@model RoceTool.Web.Pages.Finance.DetailsModel
+@{
+    var company = Model.Company;
+    var dividend = Model.ScenarioYear is int year ? company.DividendFor(year) : null;
+}
+<section id="dividend-scenarios" class="panel finance-scenario-panel">
+    <div class="panel-heading"><div><span class="eyebrow">DIVIDEND SCENARIOS</span><h2>如果配息改變，價格要在哪裡？</h2></div><span class="source-pill">使用者假設 · 非股利預測</span></div>
+    <p class="hint">選一個已申報盈餘年度作基準，試看減少、維持或增加現金股利的結果。股票股利不算現金；目標殖利率不代表合理價或可安全配發的金額。</p>
+    <form method="get" asp-page="/Finance/Details" asp-route-stockNo="@Model.StockNo" asp-fragment="dividend-scenarios" class="finance-scenario-form" data-no-ajax>
+        <input type="hidden" asp-for="Year" /><input type="hidden" asp-for="Query" /><input type="hidden" asp-for="Sort" />
+        <input type="hidden" asp-for="Direction" /><input type="hidden" asp-for="OnlyTarget" />
+        <label><span>基準盈餘年度</span><select asp-for="ScenarioYear">@foreach (var yearOption in Model.HistoryYears) { <option value="@yearOption">@yearOption 年</option> }</select></label>
+        <label><span>自訂現金股利變化（%）</span><input asp-for="ScenarioChange" type="number" min="-100" max="100" step="0.1" required /><small>−100% 至 +100%</small></label>
+        <label><span>目標現金殖利率（%）</span><input asp-for="TargetYield" type="number" min="0.1" max="30" step="0.1" required /><small>0.1% 至 30%</small></label>
+        <button type="submit" class="button button-primary">更新情境</button>
+    </form>
+    @if (!Model.ScenarioInputValid)
+    {
+        <p class="finance-research-notice" role="alert">請選擇表內年度，輸入 −100 至 100 的股利變化，以及 0.1 至 30 的目標殖利率。無效輸入不進行試算。</p>
+    }
+    else if (dividend?.CashPerShare is not decimal)
+    {
+        <p class="finance-research-notice">尚未取得 @Model.ScenarioYear 年完整現金股利分項，無法建立基準；缺資料不當作 0。</p>
+    }
+    else
+    {
+        <p class="finance-scenario-base">歷史基準：<strong>@Model.ScenarioYear 年現金 @dividend.CashPerShare.Value.ToString("0.###") 元／股</strong>
+            ＝盈餘現金 @(dividend.CashEarnings?.ToString("0.###") ?? "—") ＋公積現金 @(dividend.CashReserves?.ToString("0.###") ?? "—")。
+            <span>@dividend.DecisionStatus</span>
+            @if (FinancePageData.SourceLink(dividend.SourceUrl) is string dividendUrl) { <a href="@dividendUrl" target="_blank" rel="noopener noreferrer">官方申報 ↗</a> }
+        </p>
+        <div class="table-wrap finance-scenario-table" tabindex="0" role="region" aria-label="現金股利變化與目標殖利率情境">
+            <table>
+                <thead><tr><th scope="col">假設變化</th><th scope="col">假設現金股利<br />（元／股）</th><th scope="col">以目前收盤試算<br />現金殖利率</th><th scope="col">@Model.TargetYield.ToString("0.##")% 對應價格<br />（元）</th><th scope="col">若買在原股利的<br />5% 參考價</th></tr></thead>
+                <tbody>
+                @foreach (var scenario in Model.Scenarios)
+                {
+                    <tr class="@(scenario.ChangePercent == Model.ScenarioChange ? "is-custom-scenario" : "")">
+                        <th scope="row">@(scenario.ChangePercent == 0 ? "維持" : $"{scenario.ChangePercent:+0.##;-0.##}%")
+                            @if (scenario.ChangePercent == Model.ScenarioChange) { <small class="finance-eps-meta">目前自訂</small> }</th>
+                        <td>@scenario.CashPerShare?.ToString("0.###")</td>
+                        <td>@(scenario.YieldPercent is decimal yield ? $"{yield:N2}%" : "缺有效股價")</td>
+                        <td>@(scenario.TargetPrice?.ToString("N2") ?? "無正股利參考價")</td>
+                        <td>@(scenario.YieldAtHistoricalFivePercentPrice is decimal baselineYield ? $"{baselineYield:N2}%" : "—")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <p class="source-note">目前收盤：@(company.Stock.ClosePrice?.ToString("N2") ?? "—") 元，交易日 @(company.QuoteTradingDate?.ToString("yyyy-MM-dd") ?? "未知")@(company.IsOldQuote() ? "（舊收盤參考）" : "")。此處不改動列表的固定 5% 篩選。</p>
+        <p class="source-note">假設現金股利 = 基準現金 ×（1＋變化率）；對應價格 = 假設現金 ÷ 目標殖利率。以原股利的 5% 價格買入，若股利減 20%，現金殖利率為 4%。未扣稅、費用或計入除息價差。</p>
+    }
+</section>

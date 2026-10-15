@@ -1,0 +1,142 @@
+[
+  {
+    "StockNo": "2881",
+    "FiscalYear": 2025,
+    "EntityName": "富邦人壽",
+    "Business": "人壽保險",
+    "NetIncome": 62655000,
+    "Basis": "公司法說稅後淨利（子公司合併報表歸屬母公司業主；原單位百萬元，換算為千元）",
+    "SourceUrl": "https://www.irpro.co/2881/events/553/CH/20260316185525-2.xlsx",
+    "SourceName": "富邦金控2025全年法說會財務摘要：富邦人壽 G25"
+  },
+  {
+    "StockNo": "2881",
+    "FiscalYear": 2025,
+    "EntityName": "台北富邦銀行",
+    "Business": "銀行",
+    "NetIncome": 36339876,
+    "Basis": "公司法說稅後淨利（子公司合併報表歸屬母公司業主；原單位百萬元，換算後取整千元）",
+    "SourceUrl": "https://www.irpro.co/2881/events/553/CH/20260316185525-2.xlsx",
+    "SourceName": "富邦金控2025全年法說會財務摘要：台北富邦銀行 G16"
+  },
+  {
+    "StockNo": "2881",
+    "FiscalYear": 2025,
+    "EntityName": "富邦證券",
+    "Business": "證券",
+    "NetIncome": 10591000,
+    "Basis": "公司法說稅後淨利（子公司合併報表歸屬母公司業主；原單位百萬元，換算為千元）",
+    "SourceUrl": "https://www.irpro.co/2881/events/553/CH/20260316185525-2.xlsx",
+    "SourceName": "富邦金控2025全年法說會財務摘要：富邦證券 G15"
+  },
+  {
+    "StockNo": "2881",
+    "FiscalYear": 2025,
+    "EntityName": "富邦產險",
+    "Business": "產物保險",
+    "NetIncome": 6965993,
+    "Basis": "公司法說稅後淨利（子公司合併報表歸屬母公司業主；原單位百萬元，換算後取整千元）",
+    "SourceUrl": "https://www.irpro.co/2881/events/553/CH/20260316185525-2.xlsx",
+    "SourceName": "富邦金控2025全年法說會財務摘要：富邦產險 G15"
+  },
+  {
+    "StockNo": "2881",
+    "FiscalYear": 2024,
+    "EntityName": "富邦人壽",
+    "Business": "人壽保險",
+    "NetIncome": 102658000,
+    "Basis": "公司法說稅後淨利（子公司合併報表歸屬母公司業主；原單位百萬元，換算為千元）",
+    "SourceUrl": "https://www.irpro.co/2881/events/553/CH/20260316185525-2.xlsx",
+    "SourceName": "富邦金控2025全年法說會財務摘要：富邦人壽 H25／2024比較年度"
+  },
+  {
+    "StockNo": "2881",
+    "FiscalYear": 2024,
+    "EntityName": "台北富邦銀行",
+    "Business": "銀行",
+    "NetIncome": 30407317,
+    "Basis": "公司法說稅後淨利（子公司合併報表歸屬母公司業主；原單位百萬元，換算後取整千元）",
+    "SourceUrl": "https://www.irpro.co/2881/events/553/CH/20260316185525-2.xlsx",
+    "SourceName": "富邦金控2025全年法說會財務摘要：台北富邦銀行 H16／2024比較年度"
+  },
+  {
+    "StockNo": "2881",
+    "FiscalYear": 2024,
+    "EntityName": "富邦證券",
+    "Business": "證券",
+    "NetIncome": 10019000,
+    "Basis": "公司法說稅後淨利（子公司合併報表歸屬母公司業主；原單位百萬元，換算為千元）",
+    "SourceUrl": "https://www.irpro.co/2881/events/553/CH/20260316185525-2.xlsx",
+    "SourceName": "富邦金控2025全年法說會財務摘要：富邦證券 H15／2024比較年度"
+  },
+  {
+    "StockNo": "2881",
+    "FiscalYear": 2024,
+    "EntityName": "富邦產險",
+    "Business": "產物保險",
+    "NetIncome": 3016944,
+    "Basis": "公司法說稅後淨利（子公司合併報表歸屬母公司業主；原單位百萬元，換算後取整千元）",
+    "SourceUrl": "https://www.irpro.co/2881/events/553/CH/20260316185525-2.xlsx",
+    "SourceName": "富邦金控2025全年法說會財務摘要：富邦產險 H15／2024比較年度"
+  },
+  {
+    "StockNo": "2882",
+    "FiscalYear": 2025,
+    "EntityName": "國泰人壽",
+    "Business": "人壽保險",
+    "NetIncome": 56565000,
+    "Basis": "公司法說稅後淨利（子公司合併本期淨利，含非控制權益；原單位百萬元，換算為千元）",
+    "SourceUrl": "https://www.cathayholdings.com/holdings/-/media/328003db280c4af097620404cf56d3f9.pdf?sc_lang=zh-tw",
+    "SourceName": "國泰金控2025第四季法說會英文簡報：第50頁 FY25 Net income"
+  },
+  {
+    "StockNo": "2882",
+    "FiscalYear": 2025,
+    "EntityName": "國泰世華銀行",
+    "Business": "銀行",
+    "NetIncome": 43510000,
+    "Basis": "公司法說稅後淨利（子公司合併本期淨利，含非控制權益；原單位百萬元，換算為千元）",
+    "SourceUrl": "https://www.cathayholdings.com/holdings/-/media/328003db280c4af097620404cf56d3f9.pdf?sc_lang=zh-tw",
+    "SourceName": "國泰金控2025第四季法說會英文簡報：第51頁 FY25 Net income"
+  },
+  {
+    "StockNo": "2882",
+    "FiscalYear": 2025,
+    "EntityName": "國泰產險",
+    "Business": "產物保險",
+    "NetIncome": 3755000,
+    "Basis": "公司法說稅後淨利（子公司合併本期淨利；原單位百萬元，換算為千元）",
+    "SourceUrl": "https://www.cathayholdings.com/holdings/-/media/328003db280c4af097620404cf56d3f9.pdf?sc_lang=zh-tw",
+    "SourceName": "國泰金控2025第四季法說會英文簡報：第52頁 FY25 Net income"
+  },
+  {
+    "StockNo": "2882",
+    "FiscalYear": 2024,
+    "EntityName": "國泰人壽",
+    "Business": "人壽保險",
+    "NetIncome": 67280000,
+    "Basis": "公司法說稅後淨利（子公司合併本期淨利，含非控制權益；原單位百萬元，換算為千元）",
+    "SourceUrl": "https://www.cathayholdings.com/holdings/-/media/328003db280c4af097620404cf56d3f9.pdf?sc_lang=zh-tw",
+    "SourceName": "國泰金控2025第四季法說會英文簡報：第50頁 FY24 Net income"
+  },
+  {
+    "StockNo": "2882",
+    "FiscalYear": 2024,
+    "EntityName": "國泰世華銀行",
+    "Business": "銀行",
+    "NetIncome": 38341000,
+    "Basis": "公司法說稅後淨利（子公司合併本期淨利，含非控制權益；原單位百萬元，換算為千元）",
+    "SourceUrl": "https://www.cathayholdings.com/holdings/-/media/328003db280c4af097620404cf56d3f9.pdf?sc_lang=zh-tw",
+    "SourceName": "國泰金控2025第四季法說會英文簡報：第51頁 FY24 Net income"
+  },
+  {
+    "StockNo": "2882",
+    "FiscalYear": 2024,
+    "EntityName": "國泰產險",
+    "Business": "產物保險",
+    "NetIncome": 2637000,
+    "Basis": "公司法說稅後淨利（子公司合併本期淨利；原單位百萬元，換算為千元）",
+    "SourceUrl": "https://www.cathayholdings.com/holdings/-/media/328003db280c4af097620404cf56d3f9.pdf?sc_lang=zh-tw",
+    "SourceName": "國泰金控2025第四季法說會英文簡報：第52頁 FY24 Net income"
+  }
+]

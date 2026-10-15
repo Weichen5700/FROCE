@@ -30,6 +30,23 @@
     </div>
 </form>
 <section class="panel">
-    <h2>預設分數意義</h2>
-    <p class="hint">一般指標的五個門檻依序對應 0、25、50、75、100 分；負債比方向相反。門檻之外會限制在 0～100 分，中間採線性插值。</p>
+    <div class="panel-heading"><div><span class="eyebrow">METRIC GUIDE</span><h2>每個指標在看什麼</h2></div></div>
+    <p class="hint">下列配重是預設設計思路，不是唯一標準；你可以在上方調整。權重代表該指標對總分的重要程度，不是財報比率本身。</p>
+    <div class="table-wrap">
+        <table class="score-explanation-table">
+            <thead><tr><th>指標</th><th>簡易意義</th><th>計算公式</th><th>預設權重的考量</th></tr></thead>
+            <tbody>
+            @foreach (var explanation in Model.MetricExplanations)
+            {
+                <tr>
+                    <th>@ScoreEngine.Label(explanation.Key)</th>
+                    <td>@explanation.Meaning</td>
+                    <td><code>@explanation.Formula</code></td>
+                    <td>@explanation.DefaultWeightReason</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <div class="callout"><strong>總分與資料缺漏</strong><span>總分 = Σ（指標分數 × 權重）÷ 可用指標權重總和。預設權重為 ROCE 40%、營業利益率 20%、ROE 15%、負債比 15%、流動比率 10%；缺少指標資料時會按可用權重重算，並以覆蓋率顯示缺漏程度。五個門檻對應 0、25、50、75、100 分，負債比方向相反，門檻間採線性插值。</span></div>
 </section>

@@ -1,0 +1,6 @@
+[build]
+# Build output outside the Chinese-character workspace path to avoid MinGW path issues
+target-dir = "C:\\tmp\\roce-viewer"
+
+[target.x86_64-pc-windows-gnu]
+linker = "C:\\Users\\weichen\\AppData\\Local\\Microsoft\\WinGet\\Packages\\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\\mingw64\\bin\\gcc.exe"

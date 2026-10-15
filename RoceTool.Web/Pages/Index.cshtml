@@ -36,7 +36,7 @@
     <section class="empty-state">
         <div class="empty-icon">◎</div>
         <h2>你的觀察清單還是空的</h2>
-        <p>先查一家公司。系統會自動整理最新季資料與近五個完整年度。</p>
+        <p>先查一家公司。系統會自動整理最新季資料與近七個完整年度。</p>
         <a class="button button-primary" asp-page="/Stocks/Search">查詢第一檔股票</a>
     </section>
 }
@@ -92,13 +92,37 @@ else
                 <div><span>ROCE</span><strong>@(roce?.ToString("N2") ?? "—")%</strong></div>
                 <div><span>EPS</span><strong>@(annual?.Eps?.ToString("N2") ?? "—")</strong></div>
                 <div><span>收盤價</span><strong>@(item.Stock.ClosePrice?.ToString("N2") ?? "—")</strong></div>
-                <div><span>本益比</span><strong>@(item.Stock.PeRatio?.ToString("N2") ?? "—")</strong></div>
+                <div><span>官方本益比（最新）</span><strong>@(item.Stock.PeRatio?.ToString("N2") ?? "—")</strong></div>
                 <div><span>ROE</span><strong>@(roe?.ToString("N2") ?? "—")%</strong></div>
             </div>
+            @if (item.AnnualHistory.Count > 0)
+            {
+                <details class="annual-valuation" data-annual-prices-stock="@item.Stock.StockNo"
+                          data-annual-prices-years="@string.Join(",", item.AnnualHistory.Select(x => x.FiscalYear))">
+                    <summary>查看各年度 EPS／年度末 PE</summary>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>年度</th><th>EPS</th><th>年度末收盤</th><th>年度末靜態 PE</th></tr></thead>
+                            <tbody>
+                            @foreach (var statement in item.AnnualHistory.OrderByDescending(x => x.FiscalYear))
+                            {
+                                <tr>
+                                    <td>@statement.FiscalYear</td>
+                                    <td>@(statement.Eps?.ToString("N2") ?? "—")</td>
+                                    <td data-annual-close="@statement.FiscalYear">—</td>
+                                    <td><strong data-annual-pe="@statement.FiscalYear" data-eps="@statement.Eps">—</strong></td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                    <small class="annual-valuation-note">年度靜態 PE = 該年度最後交易日收盤價 ÷ 該年度 EPS；EPS 為年度累積值。</small>
+                </details>
+            }
             <div class="card-meta-line"><span>資料覆蓋 @(item.Score?.CoveragePercent.ToString("N0") ?? "0")%</span><span>@(annual?.SourceName ?? "尚無完整年度來源")</span></div>
             @if (item.PeerComparison is PeerComparison peer)
             {
-                <div class="peer-line"><span>@peer.IndustryName · @CompanySizeBandLabels.Label(peer.SizeBand)</span><strong>同規模 @peer.SizeRoceRank / @peer.SizeSampleSize</strong><small>投入資本 @(peer.CapitalEmployed / 100000m).ToString("N1") 億</small></div>
+                <div class="peer-line"><span>@peer.IndustryName · @CompanySizeBandLabels.Label(peer.SizeBand)</span><strong>同規模 @peer.SizeRoceRank / @peer.SizeSampleSize</strong><small>投入資本 @((peer.CapitalEmployed / 100000m).ToString("N1")) 億</small></div>
             }
             <div class="card-actions">
                 <a asp-page="/Stocks/Details" asp-route-stockNo="@item.Stock.StockNo">查看分析 →</a>

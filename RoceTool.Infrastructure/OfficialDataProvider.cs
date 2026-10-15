@@ -1,16 +1,18 @@
 using System.Globalization;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using RoceTool.Core;
 
 namespace RoceTool.Infrastructure;
 
-public sealed class OfficialDataProvider(HttpClient httpClient) : IOfficialDataProvider
+public sealed class OfficialDataProvider(HttpClient httpClient, RoceDbContext db) : IOfficialDataProvider
 {
     private const string Twse = "https://openapi.twse.com.tw/v1";
     private const string Tpex = "https://www.tpex.org.tw/openapi/v1";
-    private const string TwseDailyHistory = "https://www.twse.com.tw/exchangeReport/STOCK_DAY";
+    private const string TwseDailyHistory = "https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY";
     private const string TpexDailyHistory = "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock";
     private static readonly Dictionary<string, (DateTime CachedAt, IReadOnlyList<DailyClosingPrice> Prices)> DailyPriceCache = [];
+    private static readonly Dictionary<string, (DateTime CachedAt, AnnualPriceReference Reference)> AnnualPriceCache = [];
     private static readonly object DailyPriceCacheLock = new();
 
     public async Task<IReadOnlyList<Stock>> FetchStockCatalogAsync(CancellationToken cancellationToken = default)
@@ -102,14 +104,36 @@ public sealed class OfficialDataProvider(HttpClient httpClient) : IOfficialDataP
         bool force = false, int minimumTradingDays = 240, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(stockNo)) return [];
-        var cacheKey = $"{market}:{stockNo.Trim().ToUpperInvariant()}";
+        var normalizedKey = stockNo.Trim().ToUpperInvariant();
+        var cacheKey = $"{market}:{normalizedKey}";
+
+        // In-memory cache (30-min TTL)
         lock (DailyPriceCacheLock)
         {
-            if (!force && DailyPriceCache.TryGetValue(cacheKey, out var cached) &&
-                DateTime.UtcNow - cached.CachedAt < TimeSpan.FromMinutes(30))
-                return cached.Prices;
+            if (!force && DailyPriceCache.TryGetValue(cacheKey, out var mem) &&
+                DateTime.UtcNow - mem.CachedAt < TimeSpan.FromMinutes(30) &&
+                mem.Prices.Count >= minimumTradingDays)
+                return mem.Prices;
         }
 
+        // SQLite cache – serve existing data without calling the API; callers use GetDailyPriceCachedAtAsync to check freshness
+        if (!force)
+        {
+            var dbEntry = await db.DailyPriceCaches.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.StockNo == normalizedKey, cancellationToken);
+            if (dbEntry is not null)
+            {
+                var dbPrices = DeserializeDailyPrices(dbEntry.PricesJson);
+                if (dbPrices.Count > 0)
+                {
+                    lock (DailyPriceCacheLock)
+                        DailyPriceCache[cacheKey] = (dbEntry.FetchedAt, dbPrices);
+                    return dbPrices;
+                }
+            }
+        }
+
+        // Fetch from official API
         var requestedDays = Math.Max(1, minimumTradingDays);
         var prices = new Dictionary<DateOnly, decimal>();
         var currentMonth = DateTime.UtcNow.AddHours(8);
@@ -129,12 +153,138 @@ public sealed class OfficialDataProvider(HttpClient httpClient) : IOfficialDataP
         IReadOnlyList<DailyClosingPrice> result = prices.Count == 0
             ? []
             : prices.Select(x => new DailyClosingPrice(x.Key, x.Value)).OrderByDescending(x => x.Date).ToList();
+
         if (result.Count > 0)
         {
+            try
+            {
+                var json = SerializeDailyPrices(result);
+                var now = DateTime.UtcNow;
+                // Raw SQL upsert avoids touching the shared DbContext change tracker
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"""INSERT OR REPLACE INTO "DailyPriceCaches" ("StockNo", "PricesJson", "FetchedAt") VALUES ({normalizedKey}, {json}, {now})""",
+                    cancellationToken);
+            }
+            catch (Exception) { /* write failure is non-critical */ }
+
             lock (DailyPriceCacheLock)
                 DailyPriceCache[cacheKey] = (DateTime.UtcNow, result);
         }
+
         return result;
+    }
+
+    public async Task<DateTime?> GetDailyPriceCachedAtAsync(string stockNo, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(stockNo)) return null;
+        var normalizedKey = stockNo.Trim().ToUpperInvariant();
+        var entry = await db.DailyPriceCaches.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.StockNo == normalizedKey, cancellationToken);
+        return entry?.FetchedAt;
+    }
+
+    public async Task<IReadOnlyList<AnnualPriceReference>> FetchAnnualClosingPricesAsync(string stockNo, MarketKind market,
+        IEnumerable<int> fiscalYears, bool force = false, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(stockNo)) return [];
+        var normalizedKey = stockNo.Trim().ToUpperInvariant();
+        var source = market == MarketKind.Listed ? "TWSE 個股年末收盤" : "TPEx 個股年末收盤";
+        var currentYear = DateTime.UtcNow.Year;
+
+        var years = fiscalYears
+            .Where(year => year is >= 1900 and <= 2200)
+            .Distinct()
+            .OrderByDescending(year => year)
+            .ToList();
+        if (years.Count == 0) return [];
+
+        var results = new Dictionary<int, AnnualPriceReference>();
+        var yearsToFetch = new List<int>();
+
+        // Check in-memory and SQLite caches first (sequential to avoid concurrent DbContext writes)
+        foreach (var year in years)
+        {
+            var cacheKey = $"{market}:{normalizedKey}:{year}";
+            lock (DailyPriceCacheLock)
+            {
+                if (!force && AnnualPriceCache.TryGetValue(cacheKey, out var mem) &&
+                    DateTime.UtcNow - mem.CachedAt < TimeSpan.FromMinutes(30))
+                {
+                    results[year] = mem.Reference;
+                    continue;
+                }
+            }
+
+            if (!force)
+            {
+                var dbEntry = await db.AnnualPriceCaches.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.StockNo == normalizedKey && x.FiscalYear == year, cancellationToken);
+                if (dbEntry is not null)
+                {
+                    // Completed years are cached permanently; current year has a 12-hour TTL
+                    var isStale = year >= currentYear && DateTime.UtcNow - dbEntry.FetchedAt > TimeSpan.FromHours(12);
+                    if (!isStale)
+                    {
+                        var cached = new AnnualPriceReference(
+                            year,
+                            dbEntry.TradingDate is null ? null : DateOnly.Parse(dbEntry.TradingDate),
+                            dbEntry.Close,
+                            dbEntry.Source.Length > 0 ? dbEntry.Source : source);
+                        lock (DailyPriceCacheLock)
+                            AnnualPriceCache[cacheKey] = (dbEntry.FetchedAt, cached);
+                        results[year] = cached;
+                        continue;
+                    }
+                }
+            }
+
+            yearsToFetch.Add(year);
+        }
+
+        // Fetch missing years from official API in parallel
+        if (yearsToFetch.Count > 0)
+        {
+            var fetched = await Task.WhenAll(yearsToFetch.Select(async year =>
+            {
+                for (var month = 12; month >= 1; month--)
+                {
+                    var prices = await TryFetchMonthlyClosingPricesAsync(
+                        stockNo.Trim(), market, new DateTime(year, month, 1), cancellationToken);
+                    var reference = AnnualPriceReferenceCalculator.Select(year, prices, source);
+                    if (reference.Close is not null) return (Year: year, Reference: reference);
+                }
+                return (Year: year, Reference: new AnnualPriceReference(year, null, null, source));
+            }));
+
+            // Write to SQLite using raw SQL upserts to avoid touching the shared DbContext change tracker
+            foreach (var (year, reference) in fetched)
+            {
+                results[year] = reference;
+                var cacheKey = $"{market}:{normalizedKey}:{year}";
+                lock (DailyPriceCacheLock)
+                    AnnualPriceCache[cacheKey] = (DateTime.UtcNow, reference);
+
+                try
+                {
+                    var now = DateTime.UtcNow;
+                    var tradingDate = reference.TradingDate?.ToString("yyyy-MM-dd");
+                    await db.Database.ExecuteSqlInterpolatedAsync(
+                        $"""
+                        INSERT INTO "AnnualPriceCaches" ("StockNo", "FiscalYear", "Close", "TradingDate", "Source", "FetchedAt")
+                        VALUES ({normalizedKey}, {year}, {reference.Close}, {tradingDate}, {reference.Source}, {now})
+                        ON CONFLICT ("StockNo", "FiscalYear") DO UPDATE SET
+                            "Close" = excluded."Close",
+                            "TradingDate" = excluded."TradingDate",
+                            "Source" = excluded."Source",
+                            "FetchedAt" = excluded."FetchedAt"
+                        """,
+                        cancellationToken);
+                }
+                catch (Exception) { /* write failure is non-critical */ }
+            }
+        }
+
+        return years.Select(y => results.TryGetValue(y, out var r) ? r : new AnnualPriceReference(y, null, null, "")).ToList();
     }
 
     private async Task<IReadOnlyList<DailyClosingPrice>> TryFetchMonthlyClosingPricesAsync(string stockNo, MarketKind market,
@@ -312,6 +462,38 @@ public sealed class OfficialDataProvider(HttpClient httpClient) : IOfficialDataP
 
     private static int Integer(string? value) =>
         int.TryParse(value?.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var result) ? result : 0;
+
+    private static string SerializeDailyPrices(IReadOnlyList<DailyClosingPrice> prices)
+    {
+        using var ms = new System.IO.MemoryStream();
+        using var writer = new Utf8JsonWriter(ms);
+        writer.WriteStartArray();
+        foreach (var p in prices)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("d", p.Date.ToString("yyyy-MM-dd"));
+            writer.WriteNumber("c", p.Close);
+            writer.WriteEndObject();
+        }
+        writer.WriteEndArray();
+        writer.Flush();
+        return System.Text.Encoding.UTF8.GetString(ms.ToArray());
+    }
+
+    private static IReadOnlyList<DailyClosingPrice> DeserializeDailyPrices(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.EnumerateArray()
+                .Select(el => new DailyClosingPrice(
+                    DateOnly.Parse(el.GetProperty("d").GetString()!),
+                    el.GetProperty("c").GetDecimal()))
+                .OrderByDescending(x => x.Date)
+                .ToList();
+        }
+        catch { return []; }
+    }
 }
 
 

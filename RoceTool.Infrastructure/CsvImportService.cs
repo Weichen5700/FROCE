@@ -55,6 +55,14 @@ public sealed class CsvImportService(RoceDbContext db) : ICsvImportService
                         ? value * multiplier : throw new FormatException($"{name} 不是有效數字。");
                 }
 
+                decimal? Number(string name)
+                {
+                    var raw = Get(name).Replace(",", "");
+                    if (raw.Length == 0) return null;
+                    return decimal.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var value)
+                        ? value : throw new FormatException($"{name} 不是有效數字。");
+                }
+
                 rows.Add(new FinancialStatement
                 {
                     StockNo = stockNo,
@@ -70,6 +78,12 @@ public sealed class CsvImportService(RoceDbContext db) : ICsvImportService
                     CurrentLiabilities = Amount("CurrentLiabilities"),
                     TotalLiabilities = Amount("TotalLiabilities"),
                     TotalEquity = Amount("TotalEquity"),
+                    Eps = Number("Eps"),
+                    OperatingCashFlow = Amount("OperatingCashFlow"),
+                    CapexPpe = Amount("CapexPpe"),
+                    CapexIntangibles = Amount("CapexIntangibles"),
+                    WeightedAverageShares = Number("WeightedAverageShares"),
+                    WeightedAverageSharesSource = string.IsNullOrWhiteSpace(Get("WeightedAverageSharesSource")) ? "" : Get("WeightedAverageSharesSource"),
                     SourceKind = SourceKind.Csv,
                     SourceName = string.IsNullOrWhiteSpace(Get("SourceName")) ? "CSV 匯入" : Get("SourceName"),
                     FetchedAt = DateTime.UtcNow
@@ -102,6 +116,12 @@ public sealed class CsvImportService(RoceDbContext db) : ICsvImportService
                 existing.CurrentLiabilities = row.CurrentLiabilities;
                 existing.TotalLiabilities = row.TotalLiabilities;
                 existing.TotalEquity = row.TotalEquity;
+                existing.Eps = row.Eps;
+                existing.OperatingCashFlow = row.OperatingCashFlow;
+                existing.CapexPpe = row.CapexPpe;
+                existing.CapexIntangibles = row.CapexIntangibles;
+                existing.WeightedAverageShares = row.WeightedAverageShares;
+                existing.WeightedAverageSharesSource = row.WeightedAverageSharesSource;
                 existing.IsPreferred = preferred;
                 existing.FetchedAt = DateTime.UtcNow;
             }

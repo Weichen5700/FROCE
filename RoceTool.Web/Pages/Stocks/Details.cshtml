@@ -7,6 +7,15 @@
     var roceWithInterest = annual is null ? null : FinancialCalculator.CalculateRoceIncludingInterest(annual);
     var roe = annual is null ? null : FinancialCalculator.ValueFor(MetricKey.Roe, annual);
     ViewData["Title"] = $"{a.Stock.StockNo} {a.Stock.Name}";
+    var snapshotYear = Math.Max(DateTime.Today.Year, a.LatestQuarter?.FiscalYear ?? 0);
+    var quarterSchedule = new[]
+    {
+        (Label: "Q1", Period: "Q1YTD", Deadline: new DateTime(snapshotYear, 5, 15), Statement: a.QuarterHistory.FirstOrDefault(x => x.FiscalYear == snapshotYear && x.Period == "Q1YTD"), IsAnnual: false),
+        (Label: "Q2", Period: "Q2YTD", Deadline: new DateTime(snapshotYear, 8, 14), Statement: a.QuarterHistory.FirstOrDefault(x => x.FiscalYear == snapshotYear && x.Period == "Q2YTD"), IsAnnual: false),
+        (Label: "Q3", Period: "Q3YTD", Deadline: new DateTime(snapshotYear, 11, 14), Statement: a.QuarterHistory.FirstOrDefault(x => x.FiscalYear == snapshotYear && x.Period == "Q3YTD"), IsAnnual: false),
+        (Label: "Q4", Period: "FY", Deadline: new DateTime(snapshotYear + 1, 3, 31), Statement: a.AnnualHistory.FirstOrDefault(x => x.FiscalYear == snapshotYear), IsAnnual: true)
+    };
+
 }
 <section class="detail-header">
     <div>
@@ -18,8 +27,28 @@
         <p>@(string.IsNullOrWhiteSpace(a.Stock.IndustryName) ? "未分類產業" : a.Stock.IndustryName) · @(a.Stock.StatementKind == StatementKind.General ? "一般業財報" : "金融／特殊業財報")</p>
     </div>
     <div class="header-actions">
-        <form method="post" asp-page-handler="Add"><input type="hidden" asp-for="StockNo" /><button class="button" type="submit">＋ 加入觀察</button></form>
-        <form method="post" asp-page-handler="Refresh"><input type="hidden" asp-for="StockNo" /><input type="hidden" asp-for="Year" /><button class="button button-primary" type="submit">重新抓取資料</button></form>
+        @if (Model.MarketView && a.Stock.IndustryCode == FinancePageData.IndustryCode && a.Stock.IsSupported)
+        {
+            <a class="button button-primary" asp-page="/Finance/Details" asp-route-stockNo="@a.Stock.StockNo" asp-route-year="@Model.Year"
+               asp-route-query="@Model.FinanceQuery" asp-route-sort="@Model.FinanceSort" asp-route-direction="@Model.FinanceDirection" asp-route-onlyTarget="@Model.FinanceOnlyTarget"
+               asp-route-scenarioYear="@Model.FinanceScenarioYear" asp-route-scenarioChange="@Model.FinanceScenarioChange" asp-route-targetYield="@Model.FinanceTargetYield">返回金融年度分析</a>
+        }
+        <form method="post" asp-page-handler="Add"><input type="hidden" asp-for="StockNo" /><input type="hidden" asp-for="MarketView" />
+            <input type="hidden" asp-for="FinanceQuery" /><input type="hidden" asp-for="FinanceSort" /><input type="hidden" asp-for="FinanceDirection" /><input type="hidden" asp-for="FinanceOnlyTarget" />
+            <input type="hidden" name="FinanceScenarioYear" value="@Model.FinanceScenarioYear" /><input type="hidden" name="FinanceScenarioChange" value="@Model.FinanceScenarioChange" /><input type="hidden" name="FinanceTargetYield" value="@Model.FinanceTargetYield" />
+            <button class="button" type="submit">＋ 加入觀察</button></form>
+        <form method="post" asp-page-handler="Refresh" data-progress-form="refresh">
+            <input type="hidden" asp-for="MarketView" />
+            <input type="hidden" asp-for="FinanceQuery" /><input type="hidden" asp-for="FinanceSort" /><input type="hidden" asp-for="FinanceDirection" /><input type="hidden" asp-for="FinanceOnlyTarget" />
+            <input type="hidden" name="FinanceScenarioYear" value="@Model.FinanceScenarioYear" /><input type="hidden" name="FinanceScenarioChange" value="@Model.FinanceScenarioChange" /><input type="hidden" name="FinanceTargetYield" value="@Model.FinanceTargetYield" />
+            <input type="hidden" asp-for="StockNo" /><input type="hidden" asp-for="Year" />
+            <div class="refresh-control">
+                <button class="button button-primary" type="submit" data-busy-timeout="120000" aria-describedby="refresh-status">
+                    <span data-button-label>重新抓取資料</span><span class="button-spinner" aria-hidden="true"></span>
+                </button>
+                <span id="refresh-status" class="action-status" data-progress-status role="status" aria-live="polite" hidden>正在更新官方清單、財報與行情…</span>
+            </div>
+        </form>
     </div>
 </section>
 
@@ -53,39 +82,62 @@
     </div>
 </section>
 
-<section class="moving-average-panel panel" aria-label="技術均線">
+@if (Model.NeedsFinancialRefresh)
+{
+    <div class="notice" role="status" aria-live="polite" data-auto-financial-refresh-stock="@a.Stock.StockNo">
+        部分財報欄位尚未取得，正在背景補抓；頁面可繼續使用。
+    </div>
+}
+
+<section class="moving-average-panel panel" aria-label="技術均線" data-price-data-stock="@a.Stock.StockNo">
     <div class="panel-heading">
         <div><span class="eyebrow">TECHNICAL TREND</span><h2>收盤價日均線</h2></div>
         <span class="source-pill">@(a.Stock.Market == MarketKind.Listed ? "證交所個股月日成交資訊" : "櫃買中心個股日成交資訊")</span>
     </div>
-    @if (Model.MovingAverageError is not null)
-    {
-        <p class="hint">@Model.MovingAverageError</p>
-    }
-    else
-    {
-        <div class="moving-average-grid">
-            @foreach (var average in Model.MovingAverages)
-            {
-                var priceGapPercent = average.Value is decimal movingAverage && movingAverage > 0 && a.Stock.ClosePrice is decimal closePrice
-                    ? (closePrice - movingAverage) / movingAverage * 100m
-                    : (decimal?)null;
-                <div class="moving-average-card">
-                    <span>@average.Label</span>
-                    <strong>@DetailsModel.Price(average.Value)</strong>
-                    <small>@(average.Value is null ? $"尚缺 {Math.Max(0, average.TradingDays - Model.AvailableDailyPrices)} 個交易日" : $"最近 {average.TradingDays} 個交易日")</small>
-                    <span class="ma-distance @(priceGapPercent is > 0 ? "tw-rise" : priceGapPercent is < 0 ? "tw-fall" : "")">@(priceGapPercent is null ? "暫缺現價比較" : $"{(priceGapPercent >= 0 ? "▲ 現價高於均線" : "▼ 現價低於均線")} {Math.Abs(priceGapPercent.Value):N2}%")</span>
-                </div>
-            }
-        </div>
-        <p class="technical-legend"><strong>判讀方式：</strong>上方「日漲跌／日漲跌幅」是最後一個交易日收盤價相對前一交易日；這裡是同一個最新收盤價相對各均線的距離。</p>
-        <p class="source-note">已取得 @Model.AvailableDailyPrices 個交易日收盤價；採簡單移動平均（SMA），休市日不計。此處使用交易所原始收盤價，未做除權息還原。</p>
-    }
+    <p class="hint" data-price-data-status role="status" aria-live="polite">行情均線與年度末股價載入中…</p>
+    <div class="moving-average-grid">
+        @foreach (var average in Model.MovingAverages)
+        {
+            <div class="moving-average-card">
+                <span>@average.Label</span>
+                <strong data-ma-value="@average.TradingDays">—</strong>
+                <small data-ma-status="@average.TradingDays">載入中…</small>
+                <span class="ma-distance" data-ma-distance="@average.TradingDays">載入中…</span>
+            </div>
+        }
+    </div>
+    <p class="technical-legend"><strong>判讀方式：</strong>上方「日漲跌／日漲跌幅」是最後一個交易日收盤價相對前一交易日；這裡是同一個最新收盤價相對各均線的距離。</p>
+    <p class="source-note">已取得 <span data-daily-price-count>—</span> 個交易日收盤價；採簡單移動平均（SMA），休市日不計。此處使用交易所原始收盤價，未做除權息還原。</p>
 </section>
 
 @if (a.Stock.StatementKind == StatementKind.Financial)
 {
     <div class="callout warning"><strong>這家公司使用金融／特殊業財報。</strong><span>負債通常是營運原料，系統不套用一般業 ROCE 與品質總分，以免產生誤導。</span></div>
+    @if (a.Stock.IndustryCode == FinancePageData.IndustryCode && a.Stock.IsSupported)
+    {
+        <div class="finance-detail-entry"><a class="button button-primary" asp-page="/Finance/Details" asp-route-stockNo="@a.Stock.StockNo" asp-route-year="@annual?.FiscalYear"
+            asp-route-query="@Model.FinanceQuery" asp-route-sort="@Model.FinanceSort" asp-route-direction="@Model.FinanceDirection" asp-route-onlyTarget="@Model.FinanceOnlyTarget"
+            asp-route-scenarioYear="@Model.FinanceScenarioYear" asp-route-scenarioChange="@Model.FinanceScenarioChange" asp-route-targetYield="@Model.FinanceTargetYield">查看金融股歷年 EPS 與年度財報 →</a></div>
+    }
+    @if (annual is not null)
+    {
+        <section class="panel">
+            <div class="panel-heading"><div><span class="eyebrow">FINANCIAL STATEMENT</span><h2>@annual.FiscalYear 年度財報摘要</h2></div><span class="source-pill">@annual.SourceName</span></div>
+            <div class="financial-grid">
+                <div><span>ROE</span><strong>@(roe is decimal roeValue ? $"{roeValue:N2}%" : "—")</strong></div>
+                <div><span>EPS</span><strong>@(annual.Eps?.ToString("N2") ?? "—")</strong></div>
+                <div><span>本期淨利</span><strong>@DetailsModel.Money(annual.NetIncome)</strong></div>
+                <div><span>利息收入</span><strong>@DetailsModel.Money(annual.InterestIncome)</strong></div>
+                <div><span>資產總額</span><strong>@DetailsModel.Money(annual.TotalAssets)</strong></div>
+                <div><span>權益總額</span><strong>@DetailsModel.Money(annual.TotalEquity)</strong></div>
+            </div>
+            <p class="source-note">抓取時間：@annual.FetchedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")　金額單位：新台幣億元（資料庫以千元保存）</p>
+        </section>
+    }
+    else
+    {
+        <section class="empty-state compact"><h2>尚無完整年度財報</h2><p>可重新抓取資料，或稍後再查看金融業專區的更新結果。</p></section>
+    }
 }
 else if (annual is null)
 {
@@ -93,6 +145,16 @@ else if (annual is null)
 }
 else
 {
+    var selectedAnnualPrice = Model.AnnualPriceReferences.TryGetValue(annual.FiscalYear, out var currentAnnualPrice)
+        ? currentAnnualPrice
+        : null;
+    var selectedAnnualPriceTooltip = DetailsModel.AnnualPriceTooltip(selectedAnnualPrice, annual.Eps);
+    var annualCashFlow = FinancialCalculator.CalculateFreeCashFlow(annual);
+    var staticPe = FinancialCalculator.CalculateStaticPe(selectedAnnualPrice?.Close, annual.Eps);
+    var staticPb = FinancialCalculator.CalculateStaticPb(selectedAnnualPrice?.Close, annual.TotalEquity, annualCashFlow.WeightedAverageShares);
+    var bookValuePerShare = FinancialCalculator.CalculateBookValuePerShare(annual.TotalEquity, annualCashFlow.WeightedAverageShares);
+    var officialValuationSource = a.Stock.Market == MarketKind.Otc ? "櫃買中心" : "證交所";
+    var fcfPerShareLabel = annualCashFlow.WeightedAverageSharesSource == "NetIncome/EPS 推估" ? "推估 FCF/股" : "FCF/股";
     <div class="year-tabs">
         @foreach (var item in a.AnnualHistory)
         {
@@ -107,7 +169,7 @@ else
         </div>
         <div class="formula-card">
             <span>@annual.FiscalYear ROCE（營業利益版）</span>
-            <strong>@(roce?.RocePercent?.ToString("N2") ?? "—")%</strong>
+            <strong class="roce-hover" tabindex="0" title="@selectedAnnualPriceTooltip" data-tooltip="@selectedAnnualPriceTooltip" data-annual-tooltip-year="@annual.FiscalYear">@(roce?.RocePercent?.ToString("N2") ?? "—")%</strong>
             <code>營業利益 ÷（資產總額 − 流動負債）</code>
             <p>@DetailsModel.Money(annual.OperatingIncome) ÷（@DetailsModel.Money(annual.TotalAssets) − @DetailsModel.Money(annual.CurrentLiabilities)）</p>
             <div class="formula-secondary">
@@ -124,7 +186,7 @@ else
                 <strong>@peer.SizeRoceRank <small>/ @peer.SizeSampleSize</small></strong>
                 <p>同產業同規模 ROCE 排名</p>
                 <dl>
-                    <div><dt>投入資本</dt><dd>@(peer.CapitalEmployed / 100000m).ToString("N1") 億</dd></div>
+                    <div><dt>投入資本</dt><dd>@((peer.CapitalEmployed / 100000m).ToString("N1")) 億</dd></div>
                     <div><dt>同規模中位數</dt><dd>@peer.SizeMedianRoce.ToString("N2")%</dd></div>
                     <div><dt>全產業排名</dt><dd>@peer.RoceRank / @peer.SampleSize</dd></div>
                 </dl>
@@ -134,11 +196,14 @@ else
             <span>關注指標</span>
             <dl>
                 <div><dt>EPS</dt><dd>@(annual.Eps?.ToString("N2") ?? "—")</dd></div>
-                <div><dt>本益比</dt><dd>@(a.Stock.PeRatio?.ToString("N2") ?? "—")</dd></div>
-                <div><dt>ROE</dt><dd>@(roe?.ToString("N2") ?? "—")%</dd></div>
-                <div><dt>股價淨值比</dt><dd>@(a.Stock.PbRatio?.ToString("N2") ?? "—")</dd></div>
-                <div><dt>殖利率</dt><dd>@(a.Stock.DividendYield?.ToString("N2") ?? "—")%</dd></div>
+                <div><dt>官方本益比（最新）</dt><dd>@(a.Stock.PeRatio?.ToString("N2") ?? "—") 倍</dd></div>
+                <div><dt>@annual.FiscalYear 財報靜態本益比（年度末）</dt><dd><span data-static-pe-year="@annual.FiscalYear">@(staticPe?.ToString("N2") ?? "—")</span> 倍</dd></div>
+                <div><dt>簡化 ROE</dt><dd>@(roe?.ToString("N2") ?? "—")%</dd></div>
+                <div><dt>官方股價淨值比</dt><dd>@(a.Stock.PbRatio?.ToString("N2") ?? "—") 倍</dd></div>
+                <div><dt>@annual.FiscalYear 財報靜態 P/B</dt><dd><span data-static-pb-year="@annual.FiscalYear">@(staticPb?.ToString("N2") ?? "—")</span> 倍</dd></div>
+                <div><dt>官方殖利率</dt><dd>@(a.Stock.DividendYield?.ToString("N2") ?? "—")%</dd></div>
             </dl>
+            <p class="valuation-note">官方 PE／P/B／殖利率採 @officialValuationSource 最新口徑；@annual.FiscalYear 靜態 PE／P/B 以該年度最後交易日收盤價與年度財報計算。每股淨值 @(bookValuePerShare?.ToString("N2") ?? "—") 元，股數來源：@(annualCashFlow.WeightedAverageSharesSource ?? "缺股數")。</p>
         </div>
     </section>
 
@@ -147,29 +212,119 @@ else
             <div class="panel-heading"><div><span class="eyebrow">BREAKDOWN</span><h2>分數拆解</h2></div><a asp-page="/Settings">調整權重</a></div>
             @foreach (var metric in a.Score?.Metrics ?? [])
             {
+                var description = ScoreEngine.Description(metric.Key);
                 <div class="score-line">
                     <div><strong>@metric.Label</strong><span>權重 @metric.Weight%</span></div>
                     <div class="progress"><i style="width:@(metric.Score?.ToString("0") ?? "0")%"></i></div>
                     <strong>@(metric.Value?.ToString("N2") ?? "缺資料")@(metric.Value is null ? "" : "%")</strong>
                     <span>@(metric.Score?.ToString("N0") ?? "—") 分</span>
                 </div>
+                @if (!string.IsNullOrEmpty(description))
+                {
+                    <p class="hint metric-hint">@description</p>
+                }
             }
         </article>
         <article class="panel">
-            <div class="panel-heading"><div><span class="eyebrow">TREND</span><h2>五年 ROCE</h2></div></div>
+            <div class="panel-heading"><div><span class="eyebrow">TREND</span><h2>七年 ROCE</h2></div>
+            <span class="source-pill" data-median-pe>本益比：載入中</span></div>
+            <p class="hint">年度股價參考採該年度最後一個交易日的官方收盤價；本益比 = 股價 ÷ EPS；中位數可作為合理估值參考。</p>
             <div class="trend-chart">
             @foreach (var item in a.AnnualHistory.OrderBy(x => x.FiscalYear))
             {
                 var r = FinancialCalculator.CalculateRoce(item).RocePercent;
                 var width = r is null ? 0 : Math.Clamp(Math.Abs(r.Value), 0m, 40m) / 40m * 100m;
+                var annualPrice = Model.AnnualPriceReferences.TryGetValue(item.FiscalYear, out var priceReference)
+                    ? priceReference
+                    : null;
+                var pe = annualPrice?.Close is decimal price && item.Eps is decimal eps && eps > 0
+                    ? price / eps
+                    : (decimal?)null;
+                var annualPriceTooltip = DetailsModel.AnnualPriceTooltip(annualPrice, item.Eps);
                 <div class="trend-row">
                     <span>@item.FiscalYear</span>
+                    <span class="pe-ratio" data-year-pe="@item.FiscalYear">@(pe is not null ? $"{pe.Value:N1}x" : "—")</span>
                     <div class="trend-track"><i class="@(r < 0 ? "negative" : "")" style="width:@width.ToString("0.##")%"></i></div>
-                    <strong>@(r?.ToString("N2") ?? "—")%</strong>
+                    <strong class="roce-hover" tabindex="0" title="@annualPriceTooltip" data-tooltip="@annualPriceTooltip" data-annual-tooltip-year="@item.FiscalYear">@(r?.ToString("N2") ?? "—")%</strong>
                 </div>
             }
             </div>
         </article>
+    </section>
+
+    var orderedCashFlowHistory = a.AnnualHistory.OrderBy(x => x.FiscalYear).ToList();
+    var fcfMedian = DetailsModel.Median(orderedCashFlowHistory.Select(x => FinancialCalculator.CalculateFreeCashFlow(x).FreeCashFlowPerShare));
+    FinancialStatement? previousCashFlow = null;
+    <section class="panel">
+        <div class="panel-heading">
+            <div><span class="eyebrow">CASH CONVERSION</span><h2>七年自由現金流每股</h2></div>
+            <span class="source-pill">FCF/股中位數 @(DetailsModel.PerShare(fcfMedian))</span>
+        </div>
+        <p class="hint">@FinancialCalculator.FreeCashFlowDefinition</p>
+        <div class="table-wrap cash-flow-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>年度</th>
+                        <th>營業現金流</th>
+                        <th>PPE 資本支出</th>
+                        <th>FCF</th>
+                        <th>加權股數</th>
+                        <th>FCF/股（依股數來源）</th>
+                        <th>核對</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var item in orderedCashFlowHistory)
+                {
+                    var cashFlow = FinancialCalculator.CalculateFreeCashFlow(item);
+                    var previousCashFlowValues = previousCashFlow is null
+                        ? null
+                        : FinancialCalculator.CalculateFreeCashFlow(previousCashFlow);
+                    var hasComparableCashFlow = previousCashFlow is not null &&
+                        item.OperatingCashFlow is not null && previousCashFlow.OperatingCashFlow is not null and not 0m &&
+                        item.CapexPpe is not null && previousCashFlow.CapexPpe is not null and not 0m &&
+                        cashFlow.WeightedAverageShares is not null and not 0m &&
+                        previousCashFlowValues?.WeightedAverageShares is not null and not 0m;
+                    var reviewNote = FinancialCalculator.CashFlowReviewNote(item, previousCashFlow);
+                    previousCashFlow = item;
+                    <tr>
+                        <td><strong>@item.FiscalYear</strong></td>
+                        <td>@DetailsModel.Money(cashFlow.OperatingCashFlow)</td>
+                        <td>@DetailsModel.Money(cashFlow.CapitalExpenditure)</td>
+                        <td>@DetailsModel.Money(cashFlow.FreeCashFlow)</td>
+                        <td>
+                            <strong>@DetailsModel.Shares(cashFlow.WeightedAverageShares)</strong>
+                            <small class="peer-median">@(cashFlow.WeightedAverageSharesSource ?? "缺股數")</small>
+                        </td>
+                        <td><strong>@DetailsModel.PerShare(cashFlow.FreeCashFlowPerShare)</strong><small class="peer-median">@(cashFlow.WeightedAverageSharesSource == "NetIncome/EPS 推估" ? "推估 FCF/股" : "依財報股數")</small></td>
+                        <td>
+                            @if (reviewNote is null)
+                            {
+                                if (hasComparableCashFlow)
+                                {
+                                    <span class="source-pill">未觸發跳動提醒</span>
+                                }
+                                else
+                                {
+                                    <span class="review-pill">資料不足以比較</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="review-pill">需人工核對</span>
+                                <small class="peer-median">@reviewNote</small>
+                                @if (!string.IsNullOrWhiteSpace(item.SourceUrl))
+                                {
+                                    <small class="peer-median"><a href="@item.SourceUrl" target="_blank" rel="noreferrer">MOPS 文件</a></small>
+                                }
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
     </section>
 
     <section class="panel">
@@ -185,28 +340,34 @@ else
             <div><span>流動負債</span><strong>@DetailsModel.Money(annual.CurrentLiabilities)</strong></div>
             <div><span>負債總額</span><strong>@DetailsModel.Money(annual.TotalLiabilities)</strong></div>
             <div><span>權益總額</span><strong>@DetailsModel.Money(annual.TotalEquity)</strong></div>
+            <div><span>營業現金流</span><strong>@DetailsModel.Money(annual.OperatingCashFlow)</strong></div>
+            <div><span>PPE 資本支出</span><strong>@DetailsModel.Money(annualCashFlow.CapitalExpenditure)</strong></div>
+            <div><span>FCF</span><strong>@DetailsModel.Money(annualCashFlow.FreeCashFlow)</strong></div>
+            <div><span>@fcfPerShareLabel</span><strong>@DetailsModel.PerShare(annualCashFlow.FreeCashFlowPerShare)</strong></div>
         </div>
         <p class="source-note">抓取時間：@annual.FetchedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")　單位：新台幣億元（資料庫以千元保存）</p>
     </section>
 }
 
-@if (a.LatestQuarter is FinancialStatement quarter)
+@if (a.Stock.StatementKind == StatementKind.General && a.LatestQuarter is FinancialStatement quarter)
 {
     var quarterRoce = FinancialCalculator.CalculateRoce(quarter);
     var quarterRoceWithInterest = FinancialCalculator.CalculateRoceIncludingInterest(quarter);
     var quarterScore = a.LatestQuarterScore?.TotalScore;
-    var scoreDifference = quarterScore is not null && a.Score?.TotalScore is not null ? quarterScore - a.Score.TotalScore : null;
-    var roceDifference = quarterRoce.RocePercent is not null && roce?.RocePercent is not null ? quarterRoce.RocePercent - roce.RocePercent : null;
+    var quarterAnnualizedRoce = FinancialCalculator.RoughAnnualizeYtdRoce(quarterRoce.RocePercent, quarter.Period);
+    var quarterAnnualizationFactor = FinancialCalculator.YtdAnnualizationFactor(quarter.Period);
+    var quarterlyEps = QuarterlyEpsCalculator.Calculate(a.QuarterHistory.Concat(a.AnnualHistory));
+    var trailingFour = QuarterlyEpsCalculator.CalculateTrailingFour(a.QuarterHistory.Concat(a.AnnualHistory));
     <section class="panel quarter-panel">
         <div class="panel-heading">
             <div><span class="eyebrow">LATEST YTD SNAPSHOT</span><h2>@quarter.FiscalYear @quarter.Period 最新季快照</h2></div>
             <span class="source-pill">@quarter.SourceName</span>
         </div>
-        <p class="hint">季報損益為年初累計、未年化；下列分數與年度差異只用於觀察異動，不納入正式評分、排名或篩選。</p>
+        <p class="hint">季報損益為年初累計、未年化；粗略年化僅作觀察，不與年度值直接作同期間比較，也不納入正式評分、排名或篩選。</p>
         <div class="quarter-observation">
-            <div><span>季快照品質分數</span><strong>@(quarterScore?.ToString("N1") ?? "—")</strong><small>覆蓋 @(a.LatestQuarterScore?.CoveragePercent.ToString("N0") ?? "0")% · 較年度 @DetailsModel.Signed(scoreDifference) 分</small></div>
-            <div><span>ROCE（營業利益版）</span><strong>@(quarterRoce.RocePercent?.ToString("N2") ?? "—")%</strong><small>較年度 @DetailsModel.Signed(roceDifference) 個百分點</small></div>
-            <div><span>ROCE（加利息收入）</span><strong>@(quarterRoceWithInterest.RocePercent?.ToString("N2") ?? "—")%</strong><small>@(quarterRoceWithInterest.IsSuccess ? "同一資本基礎" : quarterRoceWithInterest.ErrorMessage)</small></div>
+            <div><span>季快照品質分數</span><strong>@(quarterScore?.ToString("N1") ?? "—")</strong><small>覆蓋 @(a.LatestQuarterScore?.CoveragePercent.ToString("N0") ?? "0")% · YTD 參考，不與全年分數直接比較</small></div>
+            <div><span>ROCE（YTD，營業利益版）</span><strong>@(quarterRoce.RocePercent?.ToString("N2") ?? "—")%</strong><small>@(quarterAnnualizedRoce is decimal annualized && quarterAnnualizationFactor is decimal factor ? $"粗略年化觀察 {annualized:N2}%（×{factor:0.##}）" : "粗略年化：資料不足")</small></div>
+            <div><span>ROCE（YTD，加利息收入）</span><strong>@(quarterRoceWithInterest.RocePercent?.ToString("N2") ?? "—")%</strong><small>@(quarterRoceWithInterest.IsSuccess ? "同一資本基礎，未年化" : quarterRoceWithInterest.ErrorMessage)</small></div>
         </div>
         <div class="financial-grid compact-grid">
             <div><span>營業收入</span><strong>@DetailsModel.Money(quarter.OperatingRevenue)</strong></div>
@@ -220,10 +381,53 @@ else
             <div><span>負債總額</span><strong>@DetailsModel.Money(quarter.TotalLiabilities)</strong></div>
             <div><span>權益總額</span><strong>@DetailsModel.Money(quarter.TotalEquity)</strong></div>
         </div>
-        <p class="source-note">抓取時間：@quarter.FetchedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")　單位：新台幣億元（資料庫以千元保存）</p>
+        <div class="quarter-eps-summary" aria-label="近四季 EPS">
+            <div class="panel-heading">
+                <div><span class="eyebrow">TRAILING EPS</span><h3>近四季 EPS（TTM）</h3></div>
+                <span class="source-pill">由累積 EPS 還原</span>
+            </div>
+            <p class="hint">季報 EPS 是年初累積值；下表將 Q2／Q3 與 Q4 還原為單季 EPS，再加總最近四季。</p>
+            <div class="quarter-ttm-value">
+                <span>近四季 EPS 合計</span>
+                <strong>@(trailingFour.Value?.ToString("N2") ?? "尚缺資料")</strong>
+                <small>@(trailingFour.IsComplete ? "可用於近四季本益比的 EPS 基礎" : $"目前僅整理 {trailingFour.Quarters.Count} 季，尚不足四季")</small>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>季度</th><th>季報 EPS（累積）</th><th>換算單季 EPS</th></tr></thead>
+                    <tbody>
+                    @foreach (var item in trailingFour.Quarters)
+                    {
+                        <tr><td>@item.Label</td><td>@(item.YtdEps?.ToString("N2") ?? "—")</td><td>@(item.StandaloneEps?.ToString("N2") ?? "—")</td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <p class="source-note">計算口徑：Q1 = Q1YTD；Q2 = Q2YTD − Q1YTD；Q3 = Q3YTD − Q2YTD；Q4 = FY − Q3YTD。若中間季度資料不足，近四季 EPS 會保留為「尚缺資料」。</p>
+        </div>
+        <p class="source-note">資料取得時間（本機）：@quarter.FetchedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")　單位：新台幣億元（資料庫以千元保存）</p>
     </section>
 }
-
-
-
-
+<section class="panel quarter-timeline-panel supplemental-panel">
+    <div class="panel-heading">
+        <div><span class="eyebrow">DATA SOURCE NOTE</span><h2>@snapshotYear Q1～Q4 資料取得時間補充</h2></div>
+        <span class="source-pill">補充資訊</span>
+    </div>
+    <p class="hint">本表僅補充資料時間口徑，不參與評分。 「本機取得時間」是系統成功抓到官方財報資料的時間，不等於公司公告／申報時間；Q4 以年度財報（FY）表示。一般上市／上櫃公司以季終了後 45 日內申報為參考，金融／特殊業可能不同。</p>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>期間</th><th>資料狀態</th><th>本機取得時間（台北）</th><th>一般申報期限參考</th></tr></thead>
+            <tbody>
+            @foreach (var item in quarterSchedule)
+            {
+                <tr>
+                    <td><strong>@snapshotYear @item.Label</strong><small class="peer-median">@(item.IsAnnual ? "年度財報 FY" : $"{item.Period} 年初累計")</small></td>
+                    <td>@(item.Statement is null ? "尚未取得" : "已取得")</td>
+                    <td>@(item.Statement is null ? "—" : item.Statement.FetchedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"))</td>
+                    <td>@item.Deadline.ToString("yyyy-MM-dd")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</section>

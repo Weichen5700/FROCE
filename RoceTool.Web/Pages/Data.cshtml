@@ -13,6 +13,27 @@
     <div><span>財報紀錄</span><strong>@Model.StatementCount.ToString("N0")</strong></div>
     <div><span>資料庫</span><strong>SQLite</strong></div>
 </section>
+<section class="panel data-export-panel">
+    <div class="panel-heading"><div><span class="eyebrow">ANNUAL EXPORT</span><h2>依年度匯出財報</h2></div></div>
+    @if (Model.FinancialYears.Count == 0)
+    {
+        <p class="hint">目前沒有可匯出的財報資料。</p>
+    }
+    else
+    {
+        <form method="get" class="data-export-form">
+            <label for="FiscalYear">財報年度</label>
+            <select asp-for="FiscalYear" id="FiscalYear">
+                @foreach (var year in Model.FinancialYears)
+                {
+                    <option value="@year">@year 年</option>
+                }
+            </select>
+            <button class="button button-primary" asp-page-handler="Export" type="submit">匯出 CSV</button>
+        </form>
+        <p class="hint">匯出所選年度的 FY 與 YTD 財報列，包含不同資料來源；金額單位為新台幣千元，格式可再匯入本頁。</p>
+    }
+</section>
 <section class="two-column data-columns">
     <article class="panel">
         <div class="panel-heading"><div><span class="eyebrow">OFFICIAL</span><h2>官方資料更新</h2></div></div>
@@ -30,7 +51,7 @@
                 <button class="button button-primary" name="mode" value="import" type="submit">驗證並匯入</button>
             </div>
         </form>
-        <p class="hint">金額可用 TWD、ThousandTWD 或 MillionTWD；資料庫統一保存為新台幣千元。</p>
+        <p class="hint">金額可用 TWD、ThousandTWD 或 MillionTWD；資料庫統一保存為新台幣千元。股數欄位維持「股」。</p>
     </article>
 </section>
 @if (Model.Preview is not null)
@@ -42,9 +63,10 @@
             <ul class="error-list">@foreach (var error in Model.Preview.Errors) { <li>@error</li> }</ul>
         }
         <div class="table-wrap">
-            <table><thead><tr><th>股票</th><th>期間</th><th>營業利益</th><th>資產總額</th><th>流動負債</th><th>來源</th></tr></thead>
+            <table><thead><tr><th>股票</th><th>期間</th><th>營業利益</th><th>營業現金流</th><th>PPE 資本支出</th><th>FCF/股</th><th>來源</th></tr></thead>
             <tbody>@foreach (var row in Model.Preview.Rows.Take(30)) {
-                <tr><td>@row.StockNo</td><td>@row.FiscalYear @row.Period</td><td>@row.OperatingIncome?.ToString("N0")</td><td>@row.TotalAssets?.ToString("N0")</td><td>@row.CurrentLiabilities?.ToString("N0")</td><td>@row.SourceName</td></tr>
+                var cashFlow = FinancialCalculator.CalculateFreeCashFlow(row);
+                <tr><td>@row.StockNo</td><td>@row.FiscalYear @row.Period</td><td>@row.OperatingIncome?.ToString("N0")</td><td>@row.OperatingCashFlow?.ToString("N0")</td><td>@cashFlow.CapitalExpenditure?.ToString("N0")</td><td>@cashFlow.FreeCashFlowPerShare?.ToString("N2")</td><td>@row.SourceName</td></tr>
             }</tbody></table>
         </div>
     </section>

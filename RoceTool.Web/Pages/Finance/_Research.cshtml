@@ -1,0 +1,111 @@
+@model RoceTool.Web.Pages.Finance.DetailsModel
+@{
+    var profile = Model.Research;
+    var categories = new[] {
+        (Key: "business", Id: "research-business", Title: "業務與獲利來源", Intro: "先看業務由什麼驅動，再看年度變動。子公司自身淨利不等於對金控的貢獻，也不能再加進合併淨利。"),
+        (Key: "quality", Id: "research-quality", Title: "獲利品質與可比性", Intro: "對照報表、業務指標及公司調整說明。期間、個體範圍或制度不同時不計成長率；未建立完整調整表時不產生 Core EPS。"),
+        (Key: "capital", Id: "research-capital", Title: "資本與配息支撐", Intro: "監理資本及公司政策是配息的限制條件。金控合併獲利、子公司盈餘或 CSM 都不直接等於母公司可發現金。")
+    };
+}
+<section id="research-summary" class="panel finance-research-summary">
+    <div class="panel-heading"><div><span class="eyebrow">BUSINESS · QUALITY · CAPITAL</span><h2>金融研究筆記</h2></div><span class="source-pill">官方證據與研究提示</span></div>
+    @if (Model.ResearchError is string error)
+    {
+        <p class="finance-research-notice" role="alert">@error</p>
+    }
+    else if (profile is null)
+    {
+        <p>本公司尚未收錄業務、獲利品質及資本研究資料。原有七年財報與配息仍在本頁；尚缺研究不表示沒有風險或可持續配息。</p>
+        <p class="hint">目前試點：富邦、國泰、玉山、元大。</p>
+    }
+    else
+    {
+        <div class="finance-business-tags">@foreach (var business in profile.Businesses) { <span>@business</span> }</div>
+        <p class="finance-business-summary">@profile.BusinessSummary</p>
+        <div class="finance-research-coverage">
+            <div><span>已收錄研究期間</span><strong>@string.Join("、", profile.Periods)</strong><small>@profile.Observations.Count 筆觀察；@profile.AnnualYears 個年度</small></div>
+            <div><span>資料查核日</span><strong>@Model.ResearchVerifiedOn?.ToString("yyyy-MM-dd")</strong><small>人工核對官方資料，非即時更新</small></div>
+            <div><span>可比性與配息能力</span><strong>仍需補齊證據</strong><small>連續八季、重編鏈、母公司可配現金未完整勾稽</small></div>
+        </div>
+        <div class="finance-research-prompts"><h3>接著觀察什麼</h3><ul>@foreach (var risk in profile.Risks) { <li>@risk</li> }</ul></div>
+        <nav class="finance-section-nav" aria-label="研究主題"><a href="#research-business" data-no-ajax>業務來源</a><a href="#research-quality" data-no-ajax>獲利品質</a><a href="#research-capital" data-no-ajax>資本與配息</a></nav>
+        <p class="source-note">下列數據來自各期法說或年報。表內同年度數據可能採較新法說的比較版本；與上方歷史財報並非同一份來源，保留差異而不覆寫。公布日不明時明示未知，查核日不是公布日。</p>
+    }
+</section>
+@if (profile is not null && Model.ResearchError is null)
+{
+    @foreach (var category in categories)
+    {
+        var observations = profile.ForCategory(category.Key).ToList();
+        <section id="@category.Id" class="panel finance-research-panel">
+            <div class="panel-heading"><div><span class="eyebrow">SOURCE OBSERVATIONS</span><h2>@category.Title</h2></div><span class="source-pill">@observations.Count 筆官方觀察</span></div>
+            <p class="hint">@category.Intro</p>
+            @if (category.Key == "capital")
+            {
+                <div class="finance-research-notice">配息能力尚未完成的勾稽：母公司可分配盈餘與現金、子公司實際上繳、特別股優先分配及監理調整。已有資本比率不等於已證明配息安全；下方只列已取得證據。</div>
+            }
+            @if (observations.Count == 0)
+            { <p class="finance-research-notice">尚缺本主題的官方觀察資料，不推算結論。</p> }
+            else
+            {
+                var periods = observations.OrderByDescending(x => x.Period).Select(x => x.Period).Distinct().ToList();
+                <div class="table-wrap finance-research-table" tabindex="0" role="region" aria-label="@(category.Title + "官方數據與來源")">
+                    <table>
+                        <thead><tr><th scope="col">指標／個體與簡易意義</th>@foreach (var period in periods) { <th scope="col">@period</th> }</tr></thead>
+                        <tbody>
+                        @foreach (var group in observations.GroupBy(x => new { x.Metric, x.Entity, x.Unit }))
+                        {
+                            <tr>
+                                <th scope="row"><strong>@group.Key.Metric</strong><small>@group.Key.Entity · @group.Key.Unit</small>
+                                    @foreach (var meaning in group.Select(x => x.Meaning).Distinct()) { <p>@meaning</p> }
+                                </th>
+                                @foreach (var period in periods)
+                                {
+                                    <td class="finance-observation-value">
+                                    <span class="finance-observation-period">@period</span>
+                                    @if (!group.Any(x => x.Period == period)) { <span class="finance-missing">未收錄此期</span> }
+                                    @foreach (var observation in group.Where(x => x.Period == period))
+                                    {
+                                        <div class="finance-observation-entry">
+                                            <strong>@(observation.Value?.ToString("#,##0.####") ?? "未量化")</strong>
+                                            <small>@observation.Basis</small><small>@observation.AccountingRegime</small>
+                                            @if (!string.IsNullOrWhiteSpace(observation.Caveat)) { <p class="finance-observation-caveat">@observation.Caveat</p> }
+                                            <a href="@observation.SourceUrl" target="_blank" rel="noopener noreferrer">官方來源 @observation.SourcePage ↗</a>
+                                            <details class="finance-observation-source"><summary>日期與文件版本</summary>
+                                                <small>@observation.SourceName</small>
+                                                <small>@(observation.DateBasis == "sourceDate" ? "文件基準日" : observation.DateBasis == "unknown" ? "基準日未知" : "資料截至") @observation.AsOfDate?.ToString("yyyy-MM-dd")</small>
+                                                <small>公布：@(observation.PublishedOn?.ToString("yyyy-MM-dd") ?? "未知")</small><small>查核：@Model.ResearchVerifiedOn?.ToString("yyyy-MM-dd")</small>
+                                                <small>版本：@observation.SourceVersion</small>
+                                            </details>
+                                        </div>
+                                    }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                <p class="source-note">各期值並列供核對，空白期不補成 0。個體、會計制度與版本仍以各格標示為準，不因並排就視為可直接相減或計算成長。</p>
+            }
+            @if (category.Key == "quality")
+            {
+                @foreach (var bridge in profile.Bridges)
+                {
+                    <div class="finance-earnings-bridge">
+                        <h3>@bridge.Period · @bridge.Entity 獲利橋接</h3>
+                        <div class="finance-bridge-equation">
+                            <div><span>報表本期淨利</span><strong>@bridge.ReportedProfit.ToString("N2")</strong></div><b aria-hidden="true">＋</b>
+                            <div><span>@bridge.AdjustmentLabel</span><strong>@bridge.Adjustment.ToString("N2")</strong></div><b aria-hidden="true">＝</b>
+                            <div><span>@bridge.ResultLabel</span><strong>@bridge.Result.ToString("N2")</strong></div>
+                        </div>
+                        <p class="source-note">單位：@bridge.Unit；@bridge.Basis；@bridge.AccountingRegime。@bridge.Caveat</p>
+                        <p class="source-note"><a href="@bridge.SourceUrl" target="_blank" rel="noopener noreferrer">@bridge.SourceName @bridge.SourcePage ↗</a>；資料截至 @bridge.AsOfDate.ToString("yyyy-MM-dd")，公布 @(bridge.PublishedOn?.ToString("yyyy-MM-dd") ?? "未知")。</p>
+                        <p class="source-note">此橋接保留公司原定義，不是 Core EPS、現金流或已決議股利。不同制度年度不直接比較；CSM 為尚未賺得的服務利潤組成，不是可立即發放的現金。<a href="https://www.ifrs.org/supporting-implementation/supporting-materials-by-ifrs-standards/ifrs-17/key-terms/" target="_blank" rel="noopener noreferrer">IFRS 定義 ↗</a></p>
+                    </div>
+                }
+                @if (profile.Bridges.Count == 0) { <p class="source-note">尚未建立完整「報表淨利 → 調整項 → 調整結果」橋接，沒有自行推估經常性 EPS。</p> }
+            }
+        </section>
+    }
+}

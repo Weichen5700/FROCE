@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\RoceTool.Core\RoceTool.Core.csproj" />
     <ProjectReference Include="..\RoceTool.Infrastructure\RoceTool.Infrastructure.csproj" />
+    <ProjectReference Include="..\RoceTool.Web\RoceTool.Web.csproj" />
   </ItemGroup>
 
 </Project>

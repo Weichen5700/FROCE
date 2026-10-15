@@ -16,10 +16,16 @@ public static class DependencyInjection
         });
         services.AddHttpClient<IFinancialDataProvider, MopsAnnualReportProvider>(client =>
         {
-            client.Timeout = TimeSpan.FromSeconds(45);
+            client.Timeout = TimeSpan.FromSeconds(65);
             client.DefaultRequestHeaders.UserAgent.ParseAdd("RoceTool/1.0 (+local research tool)");
         });
         services.AddScoped<IStockAnalysisService, StockAnalysisService>();
+        services.AddScoped<FinanceQuoteRefreshService>();
+        services.AddHttpClient<MopsDividendProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(45);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("RoceTool/1.0 (+local research tool)");
+        });
         services.AddScoped<IMarketScanService, MarketScanService>();
         services.AddHostedService<MarketScanWorker>();
         services.AddScoped<ICsvImportService, CsvImportService>();
