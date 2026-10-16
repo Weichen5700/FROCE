@@ -33,6 +33,10 @@
                asp-route-query="@Model.FinanceQuery" asp-route-sort="@Model.FinanceSort" asp-route-direction="@Model.FinanceDirection" asp-route-onlyTarget="@Model.FinanceOnlyTarget"
                asp-route-scenarioYear="@Model.FinanceScenarioYear" asp-route-scenarioChange="@Model.FinanceScenarioChange" asp-route-targetYield="@Model.FinanceTargetYield">返回金融年度分析</a>
         }
+        @if (a.Stock.StatementKind == StatementKind.General)
+        {
+            <a class="button" asp-page="/ResearchQueue" asp-route-stockNo="@a.Stock.StockNo">列入例外研究</a>
+        }
         <form method="post" asp-page-handler="Add"><input type="hidden" asp-for="StockNo" /><input type="hidden" asp-for="MarketView" />
             <input type="hidden" asp-for="FinanceQuery" /><input type="hidden" asp-for="FinanceSort" /><input type="hidden" asp-for="FinanceDirection" /><input type="hidden" asp-for="FinanceOnlyTarget" />
             <input type="hidden" name="FinanceScenarioYear" value="@Model.FinanceScenarioYear" /><input type="hidden" name="FinanceScenarioChange" value="@Model.FinanceScenarioChange" /><input type="hidden" name="FinanceTargetYield" value="@Model.FinanceTargetYield" />
@@ -81,6 +85,56 @@
         <strong>@(string.IsNullOrWhiteSpace(a.Stock.QuoteDate) ? "—" : a.Stock.QuoteDate)</strong>
     </div>
 </section>
+
+@if (Model.RiskSignals.Count > 0)
+{
+    <section class="panel risk-review-panel" aria-labelledby="risk-review-title">
+        <div class="panel-heading">
+            <div><span class="eyebrow">FINANCIAL CHECKS</span><h2 id="risk-review-title">財報待查提示</h2></div>
+            <span class="source-pill">依現有三年年度資料</span>
+        </div>
+        <p class="hint">提示只指出可核對的數字型態，不代表公司造假或已排除風險；未觸發規則也不等於公司沒有風險。數值來源與金額單位請以各年官方財報為準。</p>
+        <div class="risk-review-grid">
+        @foreach (var signal in Model.RiskSignals)
+        {
+            var label = signal.Status switch
+            {
+                RiskSignalStatus.Review => "待人工核對",
+                RiskSignalStatus.NotTriggered => "未觸發此提示",
+                _ => "資料不足／不適用"
+            };
+            var className = signal.Status switch
+            {
+                RiskSignalStatus.Review => "risk-status-review",
+                RiskSignalStatus.NotTriggered => "risk-status-clear",
+                _ => "risk-status-unknown"
+            };
+            <article class="risk-review-card @className">
+                <div class="risk-review-card-heading"><h3>@signal.Title</h3><span>@label</span></div>
+                <p>@signal.Evidence</p>
+                @if (signal.Sources.Count > 0)
+                {
+                    <div class="risk-review-sources"><span>採用年度來源：</span>
+                    @foreach (var source in signal.Sources)
+                    {
+                        if (source.Url is not null)
+                        {
+                            <a href="@source.Url" target="_blank" rel="noopener noreferrer">@source.FiscalYear @source.Name ↗</a>
+                        }
+                        else
+                        {
+                            <span>@source.FiscalYear @source.Name</span>
+                        }
+                    }
+                    </div>
+                }
+                <small>@signal.Limitation</small>
+            </article>
+        }
+        </div>
+        <p class="source-note">目前欄位不足以檢查應收帳款、存貨、關係人交易、審計意見或原始報表重編；相關風險仍須人工查核來源文件。</p>
+    </section>
+}
 
 @if (Model.NeedsFinancialRefresh)
 {

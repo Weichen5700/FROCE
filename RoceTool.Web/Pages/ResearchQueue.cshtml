@@ -1,0 +1,63 @@
+@page
+@model RoceTool.Web.Pages.ResearchQueueModel
+@{
+    ViewData["Title"] = "例外研究佇列";
+}
+<section class="page-heading">
+    <span class="eyebrow">EXCEPTION RESEARCH</span>
+    <h1>例外研究佇列</h1>
+    <p>記錄目前沒有通過 ROCE／評分條件、但你仍想研究的公司。這份清單與正式篩選及觀察清單分開，不代表買進建議。</p>
+</section>
+
+@if (Model.Queue.Error is string loadError) { <div class="callout warning" role="alert">@loadError</div> }
+
+<section class="panel filter-panel">
+    <div class="panel-heading"><div><span class="eyebrow">ADD A COMPANY</span><h2>加入例外研究</h2></div></div>
+    <form method="post" asp-page-handler="Add" class="research-queue-add">
+        <div class="filter-grid">
+            <label><span>股票代號</span><input asp-for="StockNo" inputmode="numeric" maxlength="4" placeholder="例如 2330" aria-describedby="queue-company-name" />
+                <span asp-validation-for="StockNo" class="validation-message"></span><small id="queue-company-name" class="hint">@(Model.SuggestedCompanyName ?? "限本機公司清單中的一般公司")</small></label>
+            <label><span>為什麼要例外研究？</span><input asp-for="Reason" maxlength="500" placeholder="例如：高成長期投入大量資本，想檢查再投資回報" />
+                <span asp-validation-for="Reason" class="validation-message"></span></label>
+            <label><span>下次檢視日（選填）</span><input asp-for="NextReviewOn" type="date" /></label>
+            <button class="button button-primary" type="submit">加入佇列</button>
+        </div>
+    </form>
+</section>
+
+<section class="panel supplemental-panel">
+    <div class="panel-heading"><div><span class="eyebrow">RESEARCH QUEUE · @Model.Queue.Entries.Count</span><h2>待追蹤公司</h2></div></div>
+    @if (Model.Queue.Entries.Count == 0)
+    {
+        <div class="empty-state compact"><h3>目前沒有例外研究項目</h3><p>可從個股頁面帶入股票代號，再記下未通過條件後仍想研究的理由。</p></div>
+    }
+    else
+    {
+        <div class="research-queue-list">
+        @foreach (var entry in Model.Queue.Entries.OrderBy(x => x.Status == ResearchQueueStatuses.Completed).ThenBy(x => x.NextReviewOn ?? DateOnly.MaxValue).ThenBy(x => x.StockNo))
+        {
+            <article class="research-queue-card">
+                <div class="research-queue-title">
+                    <div><a asp-page="/Stocks/Details" asp-route-stockNo="@entry.StockNo"><strong>@entry.StockNo @entry.CompanyName</strong></a><small>加入 @entry.AddedAt.ToLocalTime().ToString("yyyy-MM-dd") · 更新 @entry.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd")</small></div>
+                    <span class="source-pill">@entry.Status</span>
+                </div>
+                <form method="post" asp-page-handler="Update" class="research-queue-edit">
+                    <input type="hidden" name="stockNo" value="@entry.StockNo" />
+                    <label><span>研究理由／筆記</span><textarea name="reason" rows="2" maxlength="500" required>@entry.Reason</textarea></label>
+                    <div class="research-queue-controls">
+                        <label><span>狀態</span><select name="status">
+                            @foreach (var status in Model.Statuses)
+                            {
+                                <option value="@status" selected="@(entry.Status == status)">@status</option>
+                            }
+                        </select></label>
+                        <label><span>下次檢視日</span><input type="date" name="nextReviewOn" value="@(entry.NextReviewOn?.ToString("yyyy-MM-dd"))" /></label>
+                        <button class="button button-small" type="submit">儲存</button>
+                    </div>
+                </form>
+            </article>
+        }
+        </div>
+    }
+    <p class="hint">佇列只保存在本機 <code>App_Data</code>，不會提交到 GitHub。狀態與檢視日期由你維護；沒有自動評等、新聞監控或買入指令。</p>
+</section>

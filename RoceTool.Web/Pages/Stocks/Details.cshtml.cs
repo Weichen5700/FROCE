@@ -20,6 +20,7 @@ public sealed class DetailsModel(IStockAnalysisService service, IOfficialDataPro
     public IReadOnlyList<MovingAverage> MovingAverages { get; private set; } = [];
     public IReadOnlyDictionary<int, AnnualPriceReference> AnnualPriceReferences { get; private set; } =
         new Dictionary<int, AnnualPriceReference>();
+    public IReadOnlyList<FinancialRiskSignal> RiskSignals { get; private set; } = [];
     public bool NeedsFinancialRefresh { get; private set; }
 
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
@@ -37,6 +38,8 @@ public sealed class DetailsModel(IStockAnalysisService service, IOfficialDataPro
             (analysis.AnnualHistory.Count == 0 || analysis.SelectedAnnual?.InterestIncome is null ||
              analysis.SelectedAnnual?.OperatingCashFlow is null || analysis.SelectedAnnual?.CapexPpe is null ||
              analysis.LatestQuarter?.InterestIncome is null || (analysis.LatestQuarter is not null && trailingFourEps?.IsComplete != true));
+        if (analysis.Stock.StatementKind == StatementKind.General)
+            RiskSignals = FinancialRiskReview.Assess(analysis.AnnualHistory);
         Analysis = analysis;
         MovingAverages = MovingAverageCalculator.Calculate([]);
         return Page();
