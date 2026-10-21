@@ -8,7 +8,7 @@
     };
 }
 <section id="research-summary" class="panel finance-research-summary">
-    <div class="panel-heading"><div><span class="eyebrow">BUSINESS · QUALITY · CAPITAL</span><h2>金融研究筆記</h2></div><span class="source-pill">官方證據與研究提示</span></div>
+    <div class="panel-heading"><div><span class="eyebrow">BUSINESS · QUALITY · CAPITAL</span><h2>@(profile is null ? "金融研究筆記" : $"{profile.Name} · {profile.AnnualYears} 年研究")</h2></div><span class="source-pill">官方證據與研究提示</span></div>
     @if (Model.ResearchError is string error)
     {
         <p class="finance-research-notice" role="alert">@error</p>
@@ -16,7 +16,7 @@
     else if (profile is null)
     {
         <p>本公司尚未收錄業務、獲利品質及資本研究資料。原有七年財報與配息仍在本頁；尚缺研究不表示沒有風險或可持續配息。</p>
-        <p class="hint">目前試點：富邦、國泰、玉山、元大。</p>
+        <p class="hint">目前試點：中信金、富邦、國泰、玉山、元大。</p>
     }
     else
     {

@@ -1,3 +1,42 @@
+# 2026-10-15 中信金三年研究
+
+## Acceptance criteria
+
+- [x] 中信金（2891）研究涵蓋最近三個完整年度2023／2024／2025，年度各有業務、品質、資本觀察，數字逐筆附官方來源與版本。
+- [x] 分開呈現金控、銀行、台灣人壽；不加總子公司、不混原公告與追溯EPS、不把RBC或合併淨利當可配現金。
+- [x] 金融首頁有中信金三年研究入口，公司頁並列三年度，七年財報與配息情境繼續可用；缺資料明示。
+- [x] 驗證來源／發行資料契約、三年覆蓋、建置及桌面／手機頁面；記錄實際限制。
+
+## Checklist
+
+- [x] A 核對現有研究契約與使用者偏好，定義年度2023–2025。
+- [x] B 查證官方三年度獲利、銀行／壽險業務與資本配息資料（部分簡報頁碼及台壽2024投報率留缺口）。
+- [x] C 加入版本化研究來源、首頁入口與三年覆蓋回歸測試。
+- [x] D 建置／測試／瀏覽器驗證，更新本機服務與文件。
+
+## Risk & Rollback
+
+- Risk: low；延伸既有研究資料與入口，不新增依賴、資料庫schema或自動追蹤。
+- 回復：移除中信金研究JSON與載入檔名／入口文案；既有股票、財報、股利與觀察清單保留。
+
+## Dependencies & Environment
+
+- .NET10／Razor Pages／SQLite；官網IR、年報與MOPS。2026未結束，近三年採2023–2025完整年度。
+- 重建前確認並停止自己啟動的5050服務，避免DLL鎖定；不停止未知程序。
+
+## Working Notes
+
+- 使用者指定中信金為必要標的，不能因既有四家公司試點而略過；本輪以中信金為主。
+- 官方法說中不同年度EPS可能追溯配股，需保留口徑；壽險2026制度轉換不混入完整年度比較。
+
+## Results
+
+- 新增中信金 2023–2025 三年度 58 筆官方來源觀察，分成業務 18、獲利品質 22、資本與配息 18；金控、銀行、台灣人壽分層，逐項保留期間、口徑、來源與限制。
+- 金融首頁將中信金列為研究入口；中信金公司頁一次可看七年 EPS／配息、股價與 5% 參考、股利情境，以及三年研究對照，不需再切進另一個年度頁。
+- `dotnet build RoceTool.Tests\RoceTool.Tests.csproj -c CtbcResearch --no-restore -m:1 -v:minimal` 成功，0 個錯誤；NuGet 弱點資料服務無法連線，產生 `NU1900` 警告。`dotnet test RoceTool.Tests\RoceTool.Tests.csproj -c CtbcResearch --no-build --no-restore -v:minimal`：71 通過、0 失敗。
+- 瀏覽器實際檢視金融首頁與中信金公司頁：41 檔金融股、排序入口仍在；中信金研究摘要與三類資料表正確載入。390px 手機寬度無整頁水平溢出；資料表可在其容器內閱讀。瀏覽器主控台 0 錯誤、0 警告。
+- 未填補台灣人壽 2024 投資報酬率與 2023–2024 FXVR 餘額等未確認資料；母公司現金／子公司上繳勾稽、完整八季重編鏈仍未完成。此研究資料不構成合理價或配息安全判斷。
+
 # 2026-10-15 金融研究試點實作
 
 ## Acceptance criteria
@@ -13,7 +52,7 @@
 - [x] A 對照既有頁面、公式、經驗記錄與研究規格。
 - [x] B 定義研究資料契約與配息情境計算。
 - [x] C 取得四家公司兩年度官方證據，實作同頁研究與口徑提示。
-- [ ] D 執行測試／建置及瀏覽器驗證，更新文件與本機服務（驗證完成，服務收尾進行中）。
+- [x] D 執行測試／建置及瀏覽器驗證，更新文件與本機服務。
 
 ## Risk & Rollback
 
@@ -42,6 +81,8 @@
 - 原列表股價升降冪已操作核對，研究入口4家，搜尋／排序保留。正常頁面無主控台錯誤；故意abc測例有原生number輸入警告、故意404測例有預期資源錯誤，未誤當正常頁面錯誤。
 - 行情往返以SQLite online backup副本驗證（5057）；正式DB五表逐列SHA256前後相同：Stocks1992、Watchlist22、FinancialStatements9971、AnnualDividends287、FinancialSubsidiaryIncomes14，quick_check=ok。證據 `.playwright-mcp/finance-research-data-audit-20261015.json`。
 - 畫面：`.playwright-mcp/finance-research-cathay-20261015.png`、`finance-research-esun-20261015.png`、`finance-research-mobile-20261015.png`；README／roadmap同步。來源檔不是自動更新，重新建置／重啟後載入。
+- 最新Verification建置成功，`dotnet test RoceTool.Tests\RoceTool.Tests.csproj -c Verification --no-build --no-restore -v:minimal`再次70通過、0失敗／略過。已停止5057驗證服務、檢查絕對路徑後刪除自己的副本；5050確認無監聽才啟動最新Verification版，session65167。
+- 5050實際GET確認：4個研究入口、富邦36筆、三個研究區及七年主表；POST無新增寫入。實際情境GET變更−20%：現金3.4、5%價68、原5%買價殖利率4%；定位約100px。正常主站頁面主控台0錯誤／警告。最後情境畫面 `finance-dividend-scenarios-20261015.png`，本機入口已開啟／排入Codex側欄。
 
 # 2026-07-22 專案流程循序圖
 
@@ -819,3 +860,37 @@
 
 - 使用者指示先做建議的第一階段並推送此版本。
 - 推送目的地為使用者指定的 `https://github.com/Weichen5700/FROCE`；遠端目前沒有 refs，預計推送 `master`。
+
+## 2026-10-16 ROCE 風險提示與例外研究佇列
+
+### Acceptance criteria
+
+- 個股頁提供可追溯的財報風險提示；觸發時只標示待核對，不判定舞弊；缺資料與未觸發明確分開。
+- 初版只使用現有年度營收、淨利、營業利益與營業現金流欄位，呈現透明規則及期間／數值證據。
+- 使用者可從個股進入例外研究佇列，記錄未通過 ROCE 的原因、研究筆記、狀態與下次檢視日。
+- 例外佇列與正式篩選／觀察清單分開，資料存於忽略的本機 App_Data。
+- Release 建置與差異檢查完成；不覆蓋工作樹上既有的金融研究變更。
+
+### Checklist
+
+- [x] A 核對現有財報欄位及外部名單／狀態儲存模式。
+- [x] B 實作保守的年度風險提示與本機例外研究佇列。
+- [x] C 執行 Release 建置、diff check，檢查個人資料不會進版控。
+- [x] D 只提交本輪檔案並推送至 FROCE。
+
+### Risk & Rollback
+
+- Risk: medium；新增本機研究狀態與可解釋提示，不變更 ROCE 門檻、評分或持倉。
+- Rollback: 單一 commit，可用 `git revert <commit>` 回復；佇列 JSON 為本機狀態，不進版控。
+
+### Working Notes
+
+- 使用者希望把討論的舞弊／結構性風險及錯過高成長公司的問題轉成產品改善。
+- 推送後已存在未提交的金融研究變更；本輪需逐檔 stage，避免混入其他工作。
+
+### Results
+
+- 個股頁新增近三年現金流／淨利差異與營收／營業利益連續下滑提示，使用三個連續年度及一致財報口徑；逐張卡顯示數值、來源、資料不足狀態及限制，不判定舞弊。
+- 新增本機例外研究佇列，可記錄一般業股票、研究理由、狀態及下次檢視日；與正式 ROCE 篩選及觀察清單分開，JSON 保存在被忽略的 `RoceTool.Web/App_Data`。
+- `dotnet build RoceTool.slnx -c Release -m:1 -v:minimal -p:BaseOutputPath=tmp/phase2-build/` 建置成功，0 個錯誤；只有 NuGet 弱點資料服務無法連線警告。未執行測試。
+- `git diff --cached --check` 通過；本輪提交 `18476dc` 已推送至 FROCE `master`。未提交既有 CTBC／金融研究工作樹變更。

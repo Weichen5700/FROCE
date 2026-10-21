@@ -136,19 +136,47 @@ public sealed class FinanceResearchTests
     }
 
     [Fact]
-    public void PublishedResearchIsPackagedAndCoversFourCompaniesAndTwoAnnualPeriods()
+    public void PublishedResearchIsPackagedAndCoversFiveCompaniesWithCtbcThreeYearResearch()
     {
         foreach (var file in Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, "ResearchData"), "*.json"))
             FinanceResearchStore.Parse(File.ReadAllText(file));
         var store = new FinanceResearchStore(NullLogger<FinanceResearchStore>.Instance);
         Assert.Null(store.Error);
-        Assert.Equal(new[] { "2881", "2882", "2884", "2885" }, store.Companies.Keys.Order().ToArray());
+        Assert.Equal(new[] { "2881", "2882", "2884", "2885", "2891" }, store.Companies.Keys.Order().ToArray());
         foreach (var company in store.Companies.Values)
         {
             Assert.True(company.AnnualYears >= 2);
             Assert.NotEmpty(company.Businesses);
             foreach (var category in new[] { "business", "quality", "capital" }) Assert.NotEmpty(company.ForCategory(category));
         }
+    }
+
+    [Fact]
+    public void CtbcResearchKeepsThreeCompleteYearsAndAllResearchCategories()
+    {
+        var store = new FinanceResearchStore(NullLogger<FinanceResearchStore>.Instance);
+        Assert.Null(store.Error);
+        var company = store.Companies["2891"];
+        Assert.Equal(3, company.AnnualYears);
+        Assert.Equal(new[] { "2025FY", "2024FY", "2023FY" }, company.Periods.ToArray());
+        Assert.Equal(58, company.Observations.Count);
+        foreach (var year in new[] { "2023FY", "2024FY", "2025FY" })
+        {
+            foreach (var category in new[] { "business", "quality", "capital" })
+                Assert.Contains(company.Observations, x => x.Period == year && x.Category == category && x.Value.HasValue);
+        }
+        Assert.Equal(new decimal?[] { 41333m, 49424m, 57298m }, new[] { "2023FY", "2024FY", "2025FY" }
+            .Select(year => company.Observations.Single(x => x.Period == year && x.Metric == "銀行合併稅後淨利").Value));
+        Assert.Equal(new decimal?[] { 12381.849m, 21474.506m, 20850.486m }, new[] { "2023FY", "2024FY", "2025FY" }
+            .Select(year => company.Observations.Single(x => x.Period == year && x.Metric == "台灣人壽合併稅後淨利").Value));
+        Assert.Equal(new decimal?[] { 1.8m, 2.3m, 2.5m }, new[] { "2023FY", "2024FY", "2025FY" }
+            .Select(year => company.Observations.Single(x => x.Period == year && x.Metric == "普通股已通過現金股利").Value));
+        Assert.Equal(new[] { "2024-06-14", "2025-06-13", "2026-06-12" }, new[] { "2023FY", "2024FY", "2025FY" }
+            .Select(year => company.Observations.Single(x => x.Period == year && x.Metric == "普通股已通過現金股利").AsOfDate?.ToString("yyyy-MM-dd")));
+        Assert.Contains("銀行", company.Businesses);
+        Assert.Contains("壽險", company.Businesses);
+        Assert.Contains(company.Observations, x => x.Entity.Contains("台灣人壽"));
+        Assert.All(company.Observations, x => Assert.False(string.IsNullOrWhiteSpace(x.SourcePage)));
     }
 
     [Fact]

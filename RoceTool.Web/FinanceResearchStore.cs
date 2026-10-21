@@ -11,7 +11,7 @@ public sealed class FinanceResearchStore
     public DateOnly? VerifiedOn { get; private set; }
     public string? Error { get; private set; }
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
-    private static readonly string[] FileNames = ["finance-research-fubon-cathay.json", "finance-research-esun-yuanta.json"];
+    private static readonly string[] FileNames = ["finance-research-fubon-cathay.json", "finance-research-esun-yuanta.json", "finance-research-ctbc.json"];
 
     public FinanceResearchStore(ILogger<FinanceResearchStore> logger) : this(Path.Combine(AppContext.BaseDirectory, "ResearchData"), logger) { }
 

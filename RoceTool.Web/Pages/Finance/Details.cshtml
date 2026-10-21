@@ -121,7 +121,14 @@
     <p class="hint">用來辨識獲利主要來自人壽、銀行、證券或產險。以下是各公司自身的全年損益；股權、非控制權益與合併沖銷會造成差異，不能當作金控獲利貢獻比例。</p>
     @if (Model.SubsidiaryIncomes.Count == 0)
     {
-        <div class="empty-state compact"><h3>尚未收錄官方子公司全年獲利</h3><p>此狀態不代表沒有子公司。合併報表的整體獲利已包含子公司；目前已整理富邦金、國泰金 2024／2025 官方法說資料，其餘公司與年度仍待來源補齊。</p></div>
+        @if (Model.Research?.ForCategory("business").Any(x => x.Metric.Contains("淨利") || x.Metric.Contains("獲利")) == true)
+        {
+            <p>已核對的子公司全年獲利列於上方<a href="#research-business" data-no-ajax>業務與獲利來源</a>，可在同頁比較各年數字、個體及官方口徑。尚未擴充成七年完整子公司組成。</p>
+        }
+        else
+        {
+            <div class="empty-state compact"><h3>尚未收錄官方子公司全年獲利</h3><p>此狀態不代表沒有子公司。合併報表的整體獲利已包含子公司；研究區另列已核對的業務與風險指標，完整子公司組成仍待補齊。</p></div>
+        }
     }
     else
     {

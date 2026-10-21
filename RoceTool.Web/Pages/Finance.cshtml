@@ -33,10 +33,10 @@
 
 <section class="panel finance-research-entry">
     <div><span class="eyebrow">FINANCIAL RESEARCH</span><h2>從配息往下看獲利與資本</h2>
-        <p class="hint">研究試點逐筆列出業務指標、獲利品質與資本證據。七年年度資料與兩年研究資料的覆蓋不同；尚未完成連續八季及完整可配息現金勾稽。</p></div>
+        <p class="hint">中信金研究涵蓋 2023–2025 三個完整年度，逐筆核對銀行、壽險、獲利品質與資本配息。其他公司依已收錄期間呈現；七年財報與專題研究的覆蓋不同。</p></div>
     @if (Model.ResearchError is string researchError) { <p role="alert">@researchError</p> }
     <div class="finance-research-links">
-    @foreach (var profile in Model.ResearchCompanies.OrderBy(x => x.StockNo))
+    @foreach (var profile in Model.ResearchCompanies.OrderByDescending(x => x.StockNo == "2891").ThenBy(x => x.StockNo))
     {
         <a class="button" data-no-ajax asp-page="/Finance/Details" asp-route-stockNo="@profile.StockNo" asp-fragment="research-summary"
            asp-route-query="@Model.Query" asp-route-sort="@Model.Sort" asp-route-direction="@Model.Direction" asp-route-onlyTarget="@Model.OnlyTarget">@profile.Name · @profile.AnnualYears 年研究</a>

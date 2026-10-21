@@ -1,5 +1,13 @@
 # Lessons
 
+## 2026-10-15 user-selected financial research target
+
+- Classification: misunderstanding requirements.
+- Failure mode: the initial pilot chose four representative financial groups but did not include the user's required company or a three-year research window.
+- Detection signal: user explicitly required CTBC Financial and the most recent three years.
+- Prevention rule: prioritize the user's named company; define the fiscal years explicitly before collecting evidence, and keep the existing pilot as supplemental coverage.
+- Tripwire: packaged-data tests and the rendered page must contain stock 2891 with 2023FY, 2024FY and 2025FY, with business, quality and capital evidence in each year.
+
 ## 2026-10-15 research dates and local runtime locks
 
 - Classification: incorrect assumption about data contracts / environment-dependent verification.
